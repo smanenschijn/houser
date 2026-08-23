@@ -1,0 +1,70 @@
+export default function Logo({
+  className = "",
+  size = 40,
+  showWordmark = true,
+}: {
+  className?: string;
+  size?: number;
+  showWordmark?: boolean;
+}) {
+  return (
+    <div className={`flex items-center gap-2.5 ${className}`}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 48 48"
+        fill="none"
+        aria-hidden="true"
+        className="shrink-0"
+      >
+        <defs>
+          <linearGradient
+            id="logo-bg"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="48"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#ff7a4d" />
+            <stop offset="1" stopColor="#f4612c" />
+          </linearGradient>
+        </defs>
+
+        <rect width="48" height="48" rx="14" fill="url(#logo-bg)" />
+
+        {/* sun */}
+        <circle cx="36" cy="11" r="4.5" fill="#ffd166" />
+
+        {/* cloud */}
+        <g fill="#ffffff" opacity="0.95">
+          <circle cx="9" cy="14" r="3" />
+          <circle cx="13.5" cy="11.5" r="3.6" />
+          <circle cx="18" cy="14" r="3" />
+        </g>
+
+        {/* chimney */}
+        <rect x="29" y="16" width="4.5" height="8" rx="1.5" fill="#ffffff" />
+
+        {/* house */}
+        <path d="M11 29 L24 18 L37 29 Z" fill="#ffffff" />
+        <rect x="14.5" y="29" width="19" height="12" rx="1.5" fill="#ffffff" />
+        <rect x="22.5" y="33" width="4" height="8" rx="1.5" fill="#f4612c" />
+        <circle cx="18.5" cy="34" r="2.2" fill="#8ed5f7" />
+        <circle cx="29.5" cy="34" r="2.2" fill="#8ed5f7" />
+
+        {/* tree */}
+        <rect x="38.5" y="30" width="3" height="10" rx="1.5" fill="#7a4a21" />
+        <circle cx="40" cy="24" r="5" fill="#5db361" />
+        <circle cx="35.5" cy="27.5" r="3.4" fill="#3a9a44" />
+        <circle cx="44.5" cy="27.5" r="3.4" fill="#57b25f" />
+      </svg>
+
+      {showWordmark && (
+        <span className="font-display text-2xl font-semibold leading-none text-brand-900">
+          Houser
+        </span>
+      )}
+    </div>
+  );
+}

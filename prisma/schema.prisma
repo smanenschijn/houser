@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Criteria {
+  id          String   @id @default(cuid())
+  name        String
+  weight      Float
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model House {
+  id             String   @id @default(cuid())
+  title          String?
+  description    String?
+  energyLabel    String?
+  livingArea     Float?
+  plotSize       Float?
+  price          Float?
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  imagePath        String?
+  images           String[]
+  sourceFileName   String?
+  rawText          String?
+  documentAnalysis Json?
+  status         String   @default("ready")
+  error          String?
+  progress       Int      @default(0)
+  progressLabel  String?
+  createdAt      DateTime @default(now())
+  scores         Score[]
+}
+
+model Score {
+  id               String   @id @default(cuid())
+  houseId          String
+  house            House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  total            Float
+  criteriaSnapshot Json
+  rationale        String?
+  createdAt        DateTime @default(now())
+
+  @@index([houseId])
+}
