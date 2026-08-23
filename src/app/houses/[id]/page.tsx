@@ -172,7 +172,14 @@ export default async function HouseDetailPage({
         )}
       </div>
 
-      {images.length > 0 && <ImageCarousel images={images} title={title} />}
+      {images.length > 0 && (
+        <ImageCarousel
+          images={images}
+          title={title}
+          houseId={house.id}
+          tileImage={house.imagePath}
+        />
+      )}
 
       {latitude != null && longitude != null && (
         <div className="mb-8">
