@@ -1,26 +1,58 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --color-brand-50: #fff5f0;
+  --color-brand-100: #ffe5d8;
+  --color-brand-200: #ffc9b1;
+  --color-brand-300: #ffa37f;
+  --color-brand-400: #ff7a4d;
+  --color-brand-500: #f4612c;
+  --color-brand-600: #e04a1a;
+  --color-brand-700: #ba3a14;
+  --color-brand-800: #963218;
+  --color-brand-900: #7a2d18;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-leaf-50: #f1f9ef;
+  --color-leaf-100: #ddf0d9;
+  --color-leaf-200: #bce2b8;
+  --color-leaf-300: #8ecd8e;
+  --color-leaf-400: #5db361;
+  --color-leaf-500: #3a9a44;
+  --color-leaf-600: #2c7c34;
+  --color-leaf-700: #25622c;
+  --color-leaf-800: #214f28;
+  --color-leaf-900: #1c4122;
+
+  --color-teal-400: #3fb7a8;
+  --color-teal-500: #2a9d8f;
+  --color-teal-600: #1f7d72;
+
+  --color-sky-100: #e3f5ff;
+  --color-sky-200: #c2e7ff;
+  --color-sky-300: #8ed5f7;
+  --color-sky-400: #5ec2ea;
+  --color-sky-500: #38a7d6;
+
+  --color-sun-100: #fff6df;
+  --color-sun-200: #ffe9ae;
+  --color-sun-300: #ffdb7d;
+  --color-sun-400: #ffd166;
+  --color-sun-500: #f4b942;
+
+  --color-cream-50: #fdfaf3;
+  --color-cream-100: #faf3e2;
+  --color-cream-200: #f3e7cd;
+  --color-cream-300: #e9d8b4;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-fredoka);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(60rem 40rem at 110% -10%, var(--color-sky-100), transparent 60%),
+    radial-gradient(50rem 36rem at -20% 0%, var(--color-sun-100), transparent 55%),
+    var(--color-cream-50);
+  color: var(--color-brand-900);
 }
