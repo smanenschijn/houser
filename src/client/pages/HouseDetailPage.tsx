@@ -348,14 +348,17 @@ export function HouseDetailPage() {
                 {energyLabelDoc.summary}
               </p>
             )}
-            {!energyLabelDoc.label && (
-              <DocumentUpload
-                houseId={house.id}
-                type="energyLabel"
-                label="Energielabel toevoegen"
-                onUploaded={handleDocumentUploaded}
-              />
-            )}
+            <DocumentUpload
+              houseId={house.id}
+              type="energyLabel"
+              label={
+                energyLabelDoc.label
+                  ? "Energielabel vervangen"
+                  : "Energielabel toevoegen"
+              }
+              replace={Boolean(energyLabelDoc.label)}
+              onUploaded={handleDocumentUploaded}
+            />
           </div>
 
           <div className="rounded-xl bg-sky-50 p-3">
@@ -370,14 +373,17 @@ export function HouseDetailPage() {
                 {questionnaireDoc.summary}
               </p>
             )}
-            {!questionnaireDoc.present && (
-              <DocumentUpload
-                houseId={house.id}
-                type="questionnaire"
-                label="Vragenlijst toevoegen"
-                onUploaded={handleDocumentUploaded}
-              />
-            )}
+            <DocumentUpload
+              houseId={house.id}
+              type="questionnaire"
+              label={
+                questionnaireDoc.present
+                  ? "Vragenlijst vervangen"
+                  : "Vragenlijst toevoegen"
+              }
+              replace={Boolean(questionnaireDoc.present)}
+              onUploaded={handleDocumentUploaded}
+            />
           </div>
 
           <div className="rounded-xl bg-sun-50 p-3">
@@ -392,14 +398,17 @@ export function HouseDetailPage() {
                 {itemsListDoc.summary}
               </p>
             )}
-            {!itemsListDoc.present && (
-              <DocumentUpload
-                houseId={house.id}
-                type="itemsList"
-                label="Lijst van zaken toevoegen"
-                onUploaded={handleDocumentUploaded}
-              />
-            )}
+            <DocumentUpload
+              houseId={house.id}
+              type="itemsList"
+              label={
+                itemsListDoc.present
+                  ? "Lijst van zaken vervangen"
+                  : "Lijst van zaken toevoegen"
+              }
+              replace={Boolean(itemsListDoc.present)}
+              onUploaded={handleDocumentUploaded}
+            />
           </div>
         </div>
 

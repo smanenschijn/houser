@@ -5,6 +5,7 @@ interface DocumentUploadProps {
   houseId: string;
   type: DocumentSectionType;
   label: string;
+  replace?: boolean;
   onUploaded: (documentAnalysis: DocumentAnalysis) => void;
 }
 
@@ -12,6 +13,7 @@ export default function DocumentUpload({
   houseId,
   type,
   label,
+  replace = false,
   onUploaded,
 }: DocumentUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,9 +51,11 @@ export default function DocumentUpload({
   return (
     <div className="mt-3">
       <label
-        className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-medium text-brand-700 transition-colors hover:border-brand-400 hover:bg-brand-50 ${
-          uploading ? "pointer-events-none opacity-60" : ""
-        }`}
+        className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+          replace
+            ? "border-sun-200 bg-white text-[#8a6d1a] hover:border-sun-400 hover:bg-sun-50"
+            : "border-brand-200 bg-white text-brand-700 hover:border-brand-400 hover:bg-brand-50"
+        } ${uploading ? "pointer-events-none opacity-60" : ""}`}
       >
         <input
           ref={inputRef}
