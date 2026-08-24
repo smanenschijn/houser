@@ -1,13 +1,10 @@
 import { Hono } from "hono";
 import { prisma } from "@/lib/db";
 import { processHouse } from "@/lib/process";
-import { extractHouseFromText } from "@/lib/ai";
-import {
-  analyzeDocumentsAndStore,
-  analyzeUploadedDocumentAndStore,
-} from "@/lib/documents";
+import { analyzeUploadedDocumentAndStore } from "@/lib/documents";
 import { parsePdfText } from "@/lib/pdf";
 import { scoreHouseAndStore, rescoreAllHouses } from "@/lib/score";
+import { refreshFundaHouse } from "@/lib/importFunda";
 import { deleteUploadedImages } from "@/lib/uploads";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { geocodeAddress } from "@/lib/geocode";
@@ -89,6 +86,21 @@ housesRoutes.get("/:id", async (c) => {
     return c.json({ error: "Huis niet gevonden" }, 404);
   }
   return c.json({ house });
+});
+
+housesRoutes.post("/:id/seen", async (c) => {
+  const id = c.req.param("id");
+  const house = await prisma.house.findUnique({
+    where: { id },
+    select: { id: true, isNew: true },
+  });
+  if (!house) {
+    return c.json({ error: "Huis niet gevonden" }, 404);
+  }
+  if (house.isNew) {
+    await prisma.house.update({ where: { id }, data: { isNew: false } });
+  }
+  return c.json({ ok: true });
 });
 
 housesRoutes.post("/:id/geocode", async (c) => {
@@ -235,8 +247,8 @@ housesRoutes.post("/:id/refresh", async (c) => {
     return c.json({ error: "Huis niet gevonden" }, 404);
   }
 
-  if (!house.rawText) {
-    return c.json({ error: "Geen brochuretekst beschikbaar" }, 400);
+  if (house.source !== "funda" || !house.fundaUrl) {
+    return c.json({ error: "Alleen Funda-huizen kunnen worden ververst" }, 400);
   }
 
   await prisma.house.update({
@@ -244,43 +256,16 @@ housesRoutes.post("/:id/refresh", async (c) => {
     data: { status: "refreshing", error: null },
   });
 
-  try {
-    const extracted = await extractHouseFromText(house.rawText);
-
-    await prisma.house.update({
-      where: { id },
-      data: {
-        title: extracted.title,
-        description: extracted.description,
-        energyLabel: extracted.energyLabel,
-        livingArea: extracted.livingArea,
-        plotSize: extracted.plotSize,
-        price: extracted.price,
-        address: extracted.address,
-      },
-    });
-
-    let documentAnalysis = null;
-    try {
-      documentAnalysis = await analyzeDocumentsAndStore(id, house.rawText);
-    } catch (err) {
-      console.error(`[refresh] document analysis ${id}: ${err}`);
-    }
-
-    await prisma.house.update({
-      where: { id },
-      data: { status: "ready", error: null },
-    });
-
-    return c.json({ house: { ...extracted, documentAnalysis } });
-  } catch (err) {
+  refreshFundaHouse(id).catch((err) => {
     const message =
-      err instanceof Error ? err.message : "Tekstgegevens verversen mislukt";
-    await prisma.house
+      err instanceof Error ? err.message : "Huis verversen mislukt";
+    console.error(`[refresh] ${id}: ${message}`);
+    prisma.house
       .update({ where: { id }, data: { status: "error", error: message } })
       .catch(() => {});
-    return c.json({ error: message }, 500);
-  }
+  });
+
+  return c.json({ ok: true });
 });
 
 housesRoutes.post("/rescore-all", async (c) => {

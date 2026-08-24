@@ -23,6 +23,8 @@ interface HouseDetail {
   imagePath: string | null;
   images: string[];
   sourceFileName: string | null;
+  fundaUrl: string | null;
+  isNew: boolean;
   documentAnalysis: DocumentAnalysis | null;
   status: string;
   error: string | null;
@@ -107,6 +109,21 @@ export function HouseDetailPage() {
       cancelled = true;
     };
   }, [house, queryClient]);
+
+  useEffect(() => {
+    if (!house?.isNew) return;
+    api
+      .post(`/api/houses/${house.id}/seen`)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["houses"] });
+        queryClient.setQueryData<{ house: HouseDetail }>(
+          ["house", house.id],
+          (old) =>
+            old ? { ...old, house: { ...old.house, isNew: false } } : old,
+        );
+      })
+      .catch(() => {});
+  }, [house?.isNew, house?.id, queryClient]);
 
   if (isLoading) {
     return (
@@ -199,7 +216,7 @@ export function HouseDetailPage() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
           {house.status === "refreshing"
-            ? "De tekst wordt bijgewerkt."
+            ? "Het huis wordt bijgewerkt."
             : "De score wordt bijgewerkt."}
         </div>
       )}
@@ -242,6 +259,39 @@ export function HouseDetailPage() {
           <span className="rounded-lg bg-sun-100 px-2.5 py-1 text-sm font-medium text-[#8a6d1a]">
             {house.plotSize} m² perceel
           </span>
+        )}
+        {house.fundaUrl && (
+          <a
+            href={house.fundaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-600"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M15 3h6v6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M10 14L21 3"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Bekijk op Funda
+          </a>
         )}
       </div>
 

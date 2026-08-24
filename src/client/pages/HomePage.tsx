@@ -13,9 +13,16 @@ export function HomePage() {
     queryFn: () => api.get<{ houses: HouseDTO[] }>("/api/houses"),
   });
 
-  const houses = (data?.houses ?? []).filter(
-    (h) => statusFilter === "all" || h.listingStatus === statusFilter,
-  );
+  const houses = (data?.houses ?? [])
+    .filter((h) => statusFilter === "all" || h.listingStatus === statusFilter)
+    .sort((a, b) => {
+      const scoreA = a.scores[0]?.total;
+      const scoreB = b.scores[0]?.total;
+      if (scoreA == null && scoreB == null) return 0;
+      if (scoreA == null) return -1;
+      if (scoreB == null) return 1;
+      return scoreB - scoreA;
+    });
 
   const hasListings = houses.length > 0;
   const total = data?.houses.length ?? 0;

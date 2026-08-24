@@ -2,7 +2,8 @@ import fs from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/db";
 import { scoreHouseAndStore } from "@/lib/score";
-import { getUploadDir } from "@/lib/uploads";
+import { getUploadDir, deleteUploadedImages } from "@/lib/uploads";
+import { analyzeDocumentsAndStore } from "@/lib/documents";
 import {
   launchFundaBrowser,
   newFundaPage,
@@ -145,6 +146,61 @@ async function importProfile(profile: ProfileLike): Promise<number> {
     }
 
     return imported;
+  } finally {
+    await browser.close();
+  }
+}
+
+export async function refreshFundaHouse(houseId: string): Promise<void> {
+  const house = await prisma.house.findUnique({ where: { id: houseId } });
+  if (!house || house.source !== "funda" || !house.fundaUrl) {
+    throw new Error("Alleen Funda-huizen kunnen worden ververst");
+  }
+
+  const browser = await launchFundaBrowser();
+  let page;
+
+  try {
+    page = await newFundaPage(browser);
+    const listing = await scrapeListingDetail(page, house.fundaUrl);
+
+    await deleteUploadedImages([house.imagePath, ...house.images]);
+
+    const images = await storeImages(house.id, listing.imageUrls);
+
+    await prisma.house.update({
+      where: { id: house.id },
+      data: {
+        title: listing.title,
+        description: listing.description,
+        rawText: listing.description,
+        energyLabel: listing.energyLabel,
+        livingArea: listing.livingArea,
+        plotSize: listing.plotSize,
+        price: listing.price,
+        address: listing.address,
+        listingStatus: listing.listingStatus,
+        images,
+        imagePath: images[0] ?? null,
+      },
+    });
+
+    try {
+      await scoreHouseAndStore(house.id);
+    } catch (err) {
+      console.error(`[refreshFundaHouse] score ${house.id}:`, err);
+    }
+
+    try {
+      await analyzeDocumentsAndStore(house.id, listing.description ?? "");
+    } catch (err) {
+      console.error(`[refreshFundaHouse] documents ${house.id}:`, err);
+    }
+
+    await prisma.house.update({
+      where: { id: house.id },
+      data: { status: "ready", error: null },
+    });
   } finally {
     await browser.close();
   }

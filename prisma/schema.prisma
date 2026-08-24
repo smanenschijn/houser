@@ -36,6 +36,7 @@ model House {
   source         String   @default("upload")
   fundaId        String?  @unique
   fundaUrl       String?
+  isNew          Boolean  @default(true)
   searchProfileId String?
   searchProfile  SearchProfile? @relation(fields: [searchProfileId], references: [id], onDelete: SetNull)
   status         String   @default("ready")

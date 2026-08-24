@@ -26,6 +26,7 @@ export interface HouseDTO {
   sourceFileName: string | null;
   source: string;
   fundaUrl: string | null;
+  isNew: boolean;
   status: string;
   error: string | null;
   progress: number;
