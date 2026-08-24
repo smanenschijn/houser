@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ImageCarousel from "@/client/components/ImageCarousel";
 import HouseMap from "@/client/components/HouseMap";
 import type { ScoreDTO, DocumentAnalysis, RiskSeverity } from "@/lib/types";
+import { statusBadgeClass } from "@/client/lib/status";
 import { api } from "@/client/lib/api";
 
 interface HouseDetail {
@@ -15,6 +16,7 @@ interface HouseDetail {
   plotSize: number | null;
   price: number | null;
   address: string | null;
+  listingStatus: string | null;
   latitude: number | null;
   longitude: number | null;
   imagePath: string | null;
@@ -197,6 +199,13 @@ export function HouseDetailPage() {
         <span className="text-2xl font-semibold text-brand-900">
           {formatEuro(house.price)}
         </span>
+        {house.listingStatus && (
+          <span
+            className={`rounded-lg px-2.5 py-1 text-sm font-medium ${statusBadgeClass(house.listingStatus) ?? "bg-cream-200 text-brand-700"}`}
+          >
+            {house.listingStatus}
+          </span>
+        )}
         {house.energyLabel && (
           <span className="rounded-lg bg-leaf-50 px-2.5 py-1 text-sm font-medium text-leaf-700">
             Energielabel {house.energyLabel}

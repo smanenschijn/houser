@@ -20,9 +20,12 @@ export interface HouseDTO {
   plotSize: number | null;
   price: number | null;
   address: string | null;
+  listingStatus: string | null;
   imagePath: string | null;
   images: string[];
   sourceFileName: string | null;
+  source: string;
+  fundaUrl: string | null;
   status: string;
   error: string | null;
   progress: number;
@@ -30,6 +33,22 @@ export interface HouseDTO {
   documentAnalysis: DocumentAnalysis | null;
   createdAt: string;
   scores: ScoreDTO[];
+}
+
+export interface SearchProfileDTO {
+  id: string;
+  name: string;
+  cities: string[];
+  priceMin: number | null;
+  priceMax: number | null;
+  objectTypes: string[];
+  livingAreaMin: number | null;
+  enabled: boolean;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  lastRunError: string | null;
+  lastRunCount: number | null;
+  createdAt: string;
 }
 
 export interface CriteriaDTO {

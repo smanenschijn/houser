@@ -4,6 +4,7 @@ import path from "node:path";
 import { authRoutes } from "@/server/routes/auth";
 import { housesRoutes } from "@/server/routes/houses";
 import { criteriaRoutes } from "@/server/routes/criteria";
+import { searchProfilesRoutes } from "@/server/routes/search-profiles";
 import { uploadsRoutes } from "@/server/routes/uploads";
 import { requireAuth } from "@/server/auth";
 
@@ -15,6 +16,7 @@ export function createApp() {
   app.use("/api/*", requireAuth);
   app.route("/api/houses", housesRoutes);
   app.route("/api/criteria", criteriaRoutes);
+  app.route("/api/search-profiles", searchProfilesRoutes);
 
   app.use("/uploads/*", requireAuth);
   app.route("/uploads", uploadsRoutes);

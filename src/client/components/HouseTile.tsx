@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { HouseDTO } from "@/lib/types";
+import { statusBadgeClass } from "@/client/lib/status";
 
 function formatEuro(value: number | null): string {
   if (value == null) return "—";
@@ -169,6 +170,15 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
             {progress}%
           </span>
         )}
+        {house.listingStatus &&
+          house.listingStatus !== "te koop" &&
+          !processing && (
+            <span
+              className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(house.listingStatus)}`}
+            >
+              {house.listingStatus}
+            </span>
+          )}
         {house.status === "error" && (
           <span className="absolute left-2 top-2 rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700">
             Verwerking mislukt

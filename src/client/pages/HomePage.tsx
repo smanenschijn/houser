@@ -1,17 +1,25 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import UploadForm from "@/client/components/UploadForm";
 import HouseTile from "@/client/components/HouseTile";
 import StreetScene from "@/client/components/StreetScene";
 import type { HouseDTO } from "@/lib/types";
+import { LISTING_STATUSES } from "@/lib/listingStatus";
 import { api } from "@/client/lib/api";
 
 export function HomePage() {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { data, isLoading } = useQuery({
     queryKey: ["houses"],
     queryFn: () => api.get<{ houses: HouseDTO[] }>("/api/houses"),
   });
 
-  const houses = data?.houses ?? [];
+  const houses = (data?.houses ?? []).filter(
+    (h) => statusFilter === "all" || h.listingStatus === statusFilter,
+  );
+
+  const hasListings = houses.length > 0;
+  const total = data?.houses.length ?? 0;
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-8">
@@ -28,6 +36,26 @@ export function HomePage() {
         <UploadForm />
       </div>
 
+      {!isLoading && total > 0 && (
+        <div className="mb-6 flex items-center gap-3">
+          <label className="text-sm font-medium text-brand-700">
+            Status:
+          </label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white"
+          >
+            <option value="all">Alle</option>
+            {LISTING_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <svg className="h-8 w-8 animate-spin text-brand-500" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -35,21 +63,23 @@ export function HomePage() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
-      ) : houses.length === 0 ? (
-        <div className="flex flex-col items-center py-12 text-center">
-          <StreetScene className="w-full max-w-md" />
-          <p className="mt-6 font-display text-lg font-medium text-brand-900">
-            Nog geen huizen op de kaart
-          </p>
-          <p className="mt-1 text-sm text-brand-700">
-            Upload een PDF-brochure om te beginnen.
-          </p>
-        </div>
-      ) : (
+      ) : hasListings ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {houses.map((house) => (
             <HouseTile key={house.id} house={house} />
           ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center py-12 text-center">
+          <StreetScene className="w-full max-w-md" />
+          <p className="mt-6 font-display text-lg font-medium text-brand-900">
+            {total === 0 ? "Nog geen huizen op de kaart" : "Geen huizen met deze status"}
+          </p>
+          <p className="mt-1 text-sm text-brand-700">
+            {total === 0
+              ? "Upload een PDF-brochure om te beginnen."
+              : "Kies een andere status om meer huizen te zien."}
+          </p>
         </div>
       )}
     </div>

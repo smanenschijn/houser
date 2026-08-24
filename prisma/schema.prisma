@@ -25,6 +25,7 @@ model House {
   plotSize       Float?
   price          Float?
   address        String?
+  listingStatus  String?
   latitude       Float?
   longitude      Float?
   imagePath        String?
@@ -32,12 +33,35 @@ model House {
   sourceFileName   String?
   rawText          String?
   documentAnalysis Json?
+  source         String   @default("upload")
+  fundaId        String?  @unique
+  fundaUrl       String?
+  searchProfileId String?
+  searchProfile  SearchProfile? @relation(fields: [searchProfileId], references: [id], onDelete: SetNull)
   status         String   @default("ready")
   error          String?
   progress       Int      @default(0)
   progressLabel  String?
   createdAt      DateTime @default(now())
   scores         Score[]
+}
+
+model SearchProfile {
+  id            String   @id @default(cuid())
+  name          String
+  cities        String[]
+  priceMin      Float?
+  priceMax      Float?
+  objectTypes   String[] @default(["house"])
+  livingAreaMin Float?
+  enabled       Boolean  @default(true)
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  lastRunError  String?
+  lastRunCount  Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  houses        House[]
 }
 
 model Score {

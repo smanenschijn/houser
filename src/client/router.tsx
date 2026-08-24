@@ -4,6 +4,7 @@ import { RequireAuth } from "@/client/components/RequireAuth";
 import { HomePage } from "@/client/pages/HomePage";
 import { LoginPage } from "@/client/pages/LoginPage";
 import { CriteriaPage } from "@/client/pages/CriteriaPage";
+import { SearchProfilesPage } from "@/client/pages/SearchProfilesPage";
 import { HouseDetailPage } from "@/client/pages/HouseDetailPage";
 
 export const router = createBrowserRouter([
@@ -25,6 +26,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <CriteriaPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "search-profiles",
+        element: (
+          <RequireAuth>
+            <SearchProfilesPage />
           </RequireAuth>
         ),
       },

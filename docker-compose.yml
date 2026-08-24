@@ -9,6 +9,9 @@ services:
       OPENCODE_GO_BASE_URL: https://opencode.ai/zen/go/v1
       OPENCODE_GO_MODEL: deepseek-v4-pro
       UPLOAD_DIR: /data/uploads
+      FUNDA_CRON: "0 8,13,19 * * *"
+      FUNDA_MAX_PAGES: "3"
+      FUNDA_MAX_IMAGES: "6"
     volumes:
       - uploads:/data/uploads
     depends_on:

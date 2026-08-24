@@ -1,6 +1,9 @@
 import { createApp } from "@/server/app";
+import { startScheduler } from "@/lib/scheduler";
 
 const app = createApp();
+
+startScheduler();
 
 const server = Bun.serve({
   port: Number(process.env.PORT ?? 3000),

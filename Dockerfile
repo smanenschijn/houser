@@ -12,6 +12,7 @@ RUN bunx prisma generate && bun run build
 FROM oven/bun:1 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
@@ -25,6 +26,8 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN mkdir -p /data/uploads
 ENV UPLOAD_DIR=/data/uploads
+
+RUN bunx playwright install --with-deps chromium
 
 EXPOSE 3000
 
