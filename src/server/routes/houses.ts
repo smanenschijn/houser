@@ -2,13 +2,24 @@ import { Hono } from "hono";
 import { prisma } from "@/lib/db";
 import { processHouse } from "@/lib/process";
 import { extractHouseFromText } from "@/lib/ai";
-import { analyzeDocumentsAndStore } from "@/lib/documents";
-import { scoreHouseAndStore } from "@/lib/score";
+import {
+  analyzeDocumentsAndStore,
+  analyzeUploadedDocumentAndStore,
+} from "@/lib/documents";
+import { parsePdfText } from "@/lib/pdf";
+import { scoreHouseAndStore, rescoreAllHouses } from "@/lib/score";
 import { deleteUploadedImages } from "@/lib/uploads";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { geocodeAddress } from "@/lib/geocode";
+import type { DocumentSectionType } from "@/lib/types";
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+const DOCUMENT_TYPES: DocumentSectionType[] = [
+  "energyLabel",
+  "questionnaire",
+  "itemsList",
+];
 
 export const housesRoutes = new Hono();
 
@@ -171,6 +182,51 @@ housesRoutes.delete("/:id/image", async (c) => {
   return c.json({ ok: true, imagePath: imagePathUpdate });
 });
 
+housesRoutes.post("/:id/documents/:type", async (c) => {
+  const id = c.req.param("id");
+  const type = c.req.param("type") as DocumentSectionType;
+
+  if (!DOCUMENT_TYPES.includes(type)) {
+    return c.json({ error: "Ongeldig documenttype" }, 400);
+  }
+
+  const house = await prisma.house.findUnique({ where: { id } });
+  if (!house) {
+    return c.json({ error: "Huis niet gevonden" }, 404);
+  }
+
+  const formData = await c.req.formData();
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    return c.json({ error: "Geen bestand geüpload" }, 400);
+  }
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return c.json({ error: "Bestand te groot" }, 413);
+  }
+
+  if (
+    file.type !== "application/pdf" &&
+    !file.name.toLowerCase().endsWith(".pdf")
+  ) {
+    return c.json({ error: "Upload een PDF-bestand" }, 400);
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const header = buffer.subarray(0, 1024).toString("latin1");
+  if (!header.includes("%PDF-")) {
+    return c.json({ error: "Geen geldig PDF-bestand" }, 400);
+  }
+
+  const text = await parsePdfText(buffer);
+
+  const documentAnalysis = await analyzeUploadedDocumentAndStore(id, type, text);
+
+  return c.json({ documentAnalysis });
+});
+
 housesRoutes.post("/:id/refresh", async (c) => {
   const id = c.req.param("id");
 
@@ -225,6 +281,29 @@ housesRoutes.post("/:id/refresh", async (c) => {
       .catch(() => {});
     return c.json({ error: message }, 500);
   }
+});
+
+housesRoutes.post("/rescore-all", async (c) => {
+  const houses = await prisma.house.findMany({
+    where: { rawText: { not: null } },
+    select: { id: true },
+  });
+
+  if (houses.length === 0) {
+    return c.json({ ok: true, count: 0 });
+  }
+
+  const ids = houses.map((h) => h.id);
+  await prisma.house.updateMany({
+    where: { id: { in: ids } },
+    data: { status: "scoring", error: null },
+  });
+
+  rescoreAllHouses().catch((err) => {
+    console.error(`[rescore-all] ${err}`);
+  });
+
+  return c.json({ ok: true, count: ids.length });
 });
 
 housesRoutes.post("/:id/score", async (c) => {

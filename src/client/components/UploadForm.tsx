@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-export default function UploadForm() {
+export default function UploadForm({ onSuccess }: { onSuccess?: () => void }) {
   const queryClient = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -24,6 +24,7 @@ export default function UploadForm() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["houses"] });
+      onSuccess?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Uploaden mislukt");
     } finally {

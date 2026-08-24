@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import UploadForm from "@/client/components/UploadForm";
 import HouseTile from "@/client/components/HouseTile";
 import StreetScene from "@/client/components/StreetScene";
 import type { HouseDTO } from "@/lib/types";
@@ -28,12 +27,8 @@ export function HomePage() {
           Huizen vergelijken
         </h1>
         <p className="mt-1 text-sm text-brand-700">
-          Upload je brochures en vind in één oogopslag jouw droomhuis.
+          Vind in één oogopslag jouw droomhuis.
         </p>
-      </div>
-
-      <div className="mb-8">
-        <UploadForm />
       </div>
 
       {!isLoading && total > 0 && (
@@ -77,7 +72,7 @@ export function HomePage() {
           </p>
           <p className="mt-1 text-sm text-brand-700">
             {total === 0
-              ? "Upload een PDF-brochure om te beginnen."
+              ? "Gebruik de uploadknop bovenaan om een PDF-brochure toe te voegen."
               : "Kies een andere status om meer huizen te zien."}
           </p>
         </div>

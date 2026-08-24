@@ -20,6 +20,17 @@ export interface ParsedPdf {
 
 export type ProgressFn = (percent: number, label: string) => void;
 
+export async function parsePdfText(buffer: Buffer): Promise<string> {
+  const data = new Uint8Array(buffer);
+  const doc = await getDocumentProxy(data);
+  try {
+    const { text } = await extractText(doc, { mergePages: true });
+    return text;
+  } finally {
+    await doc.loadingTask.destroy();
+  }
+}
+
 export async function parsePdf(
   buffer: Buffer,
   houseId: string,

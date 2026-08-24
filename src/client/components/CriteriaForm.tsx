@@ -21,7 +21,8 @@ export default function CriteriaForm({ initial }: { initial: CriteriaDTO[] }) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<string | false>(false);
+  const [rescoring, setRescoring] = useState(false);
 
   function update(index: number, patch: Partial<CriteriaRow>) {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
@@ -58,12 +59,59 @@ export default function CriteriaForm({ initial }: { initial: CriteriaDTO[] }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Opslaan mislukt");
-      setSaved(true);
+      setSaved("Criteria opgeslagen");
       queryClient.invalidateQueries({ queryKey: ["criteria"] });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Opslaan mislukt");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveAndRescore() {
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    setRescoring(true);
+
+    const criteria = rows
+      .filter((r) => r.name.trim() !== "")
+      .map((r) => ({
+        name: r.name.trim(),
+        weight: Number(r.weight) || 0,
+        description: r.description.trim() || null,
+      }));
+
+    if (criteria.length === 0) {
+      setError("Voeg minimaal één criterium toe");
+      setSaving(false);
+      setRescoring(false);
+      return;
+    }
+
+    try {
+      const saveRes = await fetch("/api/criteria", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ criteria }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveData.error ?? "Opslaan mislukt");
+      queryClient.invalidateQueries({ queryKey: ["criteria"] });
+
+      const rescoreRes = await fetch("/api/houses/rescore-all", {
+        method: "POST",
+      });
+      const rescoreData = await rescoreRes.json();
+      if (!rescoreRes.ok) throw new Error(rescoreData.error ?? "Scoren mislukt");
+      setSaved(
+        `Criteria opgeslagen en scores worden vernieuwd voor ${rescoreData.count} ${rescoreData.count === 1 ? "huis" : "huizen"}`,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Opslaan mislukt");
+    } finally {
+      setSaving(false);
+      setRescoring(false);
     }
   }
 
@@ -114,15 +162,24 @@ export default function CriteriaForm({ initial }: { initial: CriteriaDTO[] }) {
       </button>
 
       {error && <p className="text-sm text-brand-600">{error}</p>}
-      {saved && <p className="text-sm text-leaf-600">Criteria opgeslagen</p>}
+      {saved && <p className="text-sm text-leaf-600">{saved}</p>}
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="self-start rounded-xl bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-600 disabled:opacity-60"
-      >
-        {saving ? "Bezig met opslaan…" : "Criteria opslaan"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-xl bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-600 disabled:opacity-60"
+        >
+          {saving ? "Bezig met opslaan…" : "Criteria opslaan"}
+        </button>
+        <button
+          onClick={handleSaveAndRescore}
+          disabled={saving}
+          className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-60"
+        >
+          {rescoring ? "Scores vernieuwen…" : "Opslaan en alle scores vernieuwen"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateObject } from "ai";
 import { z } from "zod";
-import type { DocumentAnalysis } from "@/lib/types";
+import type { DocumentAnalysis, DocumentSectionType } from "@/lib/types";
 
 const provider = createOpenAICompatible({
   name: "opencode-go",
@@ -123,6 +123,79 @@ Rules:
   return object;
 }
 
+const energyLabelSectionSchema = z.object({
+  label: z
+    .string()
+    .nullable()
+    .describe("The energy label (energielabel), e.g. A, B, C, D, E, F, G or A+"),
+  summary: z
+    .string()
+    .nullable()
+    .describe("Summary in Dutch of what the energy label states, including insulation, heating, etc."),
+});
+
+const questionnaireSectionSchema = z.object({
+  present: z
+    .boolean()
+    .describe("Whether a seller's questionnaire (vragenlijst) is present"),
+  summary: z
+    .string()
+    .nullable()
+    .describe("Summary in Dutch of notable answers, disclosures and known defects"),
+});
+
+const itemsListSectionSchema = z.object({
+  present: z
+    .boolean()
+    .describe("Whether a list of items/roerende zaken (lijst van zaken) is present"),
+  summary: z
+    .string()
+    .nullable()
+    .describe("Summary in Dutch of items that are included or excluded in the sale"),
+});
+
+const documentSectionConfig = {
+  energyLabel: {
+    schema: energyLabelSectionSchema,
+    system: `You extract the energy label (energielabel) from a Dutch real-estate document.
+Respond with a JSON object using EXACTLY these keys (camelCase), no other keys:
+{"label": string|null, "summary": string|null}
+- "label" is the energy efficiency rating (A, B, C, D, E, F, G, or A+, etc.).
+- "summary" is a concise Dutch summary of what the label states (insulation, heating, etc.).
+- Use null for missing fields. Never invent values.`,
+  },
+  questionnaire: {
+    schema: questionnaireSectionSchema,
+    system: `You analyze a seller's questionnaire (vragenlijst) from a Dutch real-estate document.
+Respond with a JSON object using EXACTLY these keys (camelCase), no other keys:
+{"present": boolean, "summary": string|null}
+- "present" is true if a seller's questionnaire is actually present.
+- "summary" is a concise Dutch summary of notable answers, disclosures and known defects. Use null if not applicable.`,
+  },
+  itemsList: {
+    schema: itemsListSectionSchema,
+    system: `You analyze a list of items/roerende zaken (lijst van zaken) from a Dutch real-estate document.
+Respond with a JSON object using EXACTLY these keys (camelCase), no other keys:
+{"present": boolean, "summary": string|null}
+- "present" is true if a list of items is actually present.
+- "summary" is a concise Dutch summary of items that are included or excluded in the sale. Use null if not applicable.`,
+  },
+} as const;
+
+export async function analyzeDocumentSection(
+  type: DocumentSectionType,
+  text: string,
+): Promise<DocumentAnalysis[DocumentSectionType]> {
+  const config = documentSectionConfig[type];
+  const { object } = await generateObject({
+    model: provider.chatModel(modelId),
+    schema: config.schema,
+    system: config.system,
+    prompt: text.slice(0, 30000),
+  });
+  return object as DocumentAnalysis[DocumentSectionType];
+}
+
 const scoringSchema = z.object({
   items: z.array(
     z.object({
@@ -158,6 +231,8 @@ export async function scoreHouse(
   rawText: string,
   description: string | null,
   criteria: ScoringCriteria[],
+  address: string | null = null,
+  price: number | null = null,
 ): Promise<ScoringResult> {
   const names = criteria.map((c) => c.name).join(", ");
   const criteriaText = criteria
@@ -182,7 +257,7 @@ Rules:
 - Be strict and consistent across houses.
 - When a criterion involves a distance, travel time, or proximity (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ..."), do NOT guess or assume the distance from the brochure alone. Verify the actual distance by searching (web search or a maps application such as Google Maps) using the property's address, and base the score on what you find.`,
 
-    prompt: `Score this property against the criteria below. Use EXACTLY these criterion names (one item per criterion, no extras): ${names}\n\nCriteria:\n${criteriaText}\n\nProperty description:\n${description ?? "n/a"}\n\nProperty brochure text:\n${rawText.slice(0, 20000)}\n\nRemember: for distance/proximity criteria, verify the actual distance via search or maps instead of assuming. Write all rationales and the summary in Dutch.`,
+    prompt: `Score this property against the criteria below. Use EXACTLY these criterion names (one item per criterion, no extras): ${names}\n\nCriteria:\n${criteriaText}\n\nProperty address:\n${address ?? "n/a"}\n\nAsking price:\n${price != null ? `€${price}` : "n/a"}\n\nProperty description:\n${description ?? "n/a"}\n\nProperty brochure text:\n${rawText.slice(0, 20000)}\n\nRemember: for distance/proximity criteria, verify the actual distance via search or maps instead of assuming. Write all rationales and the summary in Dutch.`,
   });
 
   const totalWeight = criteria.reduce((s, c) => s + c.weight, 0) || 1;

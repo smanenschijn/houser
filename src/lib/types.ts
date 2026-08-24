@@ -82,3 +82,8 @@ export interface DocumentAnalysis {
   summary: string;
   riskFactors: RiskFactor[];
 }
+
+export type DocumentSectionType =
+  | "energyLabel"
+  | "questionnaire"
+  | "itemsList";

@@ -9,7 +9,13 @@ export async function scoreHouseAndStore(houseId: string) {
   const criteria = await prisma.criteria.findMany({ orderBy: { createdAt: "asc" } });
   if (criteria.length === 0) return null;
 
-  const result = await scoreHouse(house.rawText ?? "", house.description, criteria);
+  const result = await scoreHouse(
+    house.rawText ?? "",
+    house.description,
+    criteria,
+    house.address,
+    house.price,
+  );
 
   const score = await prisma.score.create({
     data: {
@@ -21,4 +27,32 @@ export async function scoreHouseAndStore(houseId: string) {
   });
 
   return { score, result };
+}
+
+export async function rescoreAllHouses() {
+  const houses = await prisma.house.findMany({
+    where: { rawText: { not: null } },
+    select: { id: true },
+  });
+
+  let scored = 0;
+  for (const house of houses) {
+    try {
+      await scoreHouseAndStore(house.id);
+      await prisma.house.update({
+        where: { id: house.id },
+        data: { status: "ready", error: null },
+      });
+      scored++;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Scoren mislukt";
+      console.error(`[rescoreAllHouses] ${house.id}: ${err}`);
+      await prisma.house
+        .update({ where: { id: house.id }, data: { status: "error", error: message } })
+        .catch(() => {});
+    }
+  }
+
+  return { count: scored };
 }

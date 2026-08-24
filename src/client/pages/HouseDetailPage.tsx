@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ImageCarousel from "@/client/components/ImageCarousel";
 import HouseMap from "@/client/components/HouseMap";
+import DocumentUpload from "@/client/components/DocumentUpload";
 import type { ScoreDTO, DocumentAnalysis, RiskSeverity } from "@/lib/types";
 import { statusBadgeClass } from "@/client/lib/status";
 import { api } from "@/client/lib/api";
@@ -141,6 +142,27 @@ export function HouseDetailPage() {
   const scores: ScoreDTO[] = house.scores ?? [];
   const latest = scores[0] ?? null;
   const documentAnalysis = house.documentAnalysis as DocumentAnalysis | null;
+  const energyLabelDoc = documentAnalysis?.energyLabel ?? {
+    label: null,
+    summary: null,
+  };
+  const questionnaireDoc = documentAnalysis?.questionnaire ?? {
+    present: false,
+    summary: null,
+  };
+  const itemsListDoc = documentAnalysis?.itemsList ?? {
+    present: false,
+    summary: null,
+  };
+  const riskFactors = documentAnalysis?.riskFactors ?? [];
+  const docSummary = documentAnalysis?.summary ?? "";
+
+  function handleDocumentUploaded(next: DocumentAnalysis) {
+    queryClient.setQueryData<{ house: HouseDetail }>(["house", id], (old) => {
+      if (!old) return old;
+      return { ...old, house: { ...old.house, documentAnalysis: next } };
+    });
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
@@ -254,97 +276,113 @@ export function HouseDetailPage() {
         </div>
       )}
 
-      {documentAnalysis && (
-        <div className="mb-8 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-brand-400">
-            Documenten &amp; risico&apos;s
-          </h2>
+      <div className="mb-8 rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-brand-400">
+          Documenten &amp; risico&apos;s
+        </h2>
 
-          {documentAnalysis.summary && (
-            <p className="mb-6 text-brand-900">{documentAnalysis.summary}</p>
-          )}
+        {docSummary && <p className="mb-6 text-brand-900">{docSummary}</p>}
 
-          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl bg-leaf-50 p-3">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-leaf-700">
-                Energielabel
-              </h3>
-              <p className="text-sm text-brand-900">
-                {documentAnalysis.energyLabel.label
-                  ? `Label ${documentAnalysis.energyLabel.label}`
-                  : "Niet vermeld"}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-leaf-50 p-3">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-leaf-700">
+              Energielabel
+            </h3>
+            <p className="text-sm text-brand-900">
+              {energyLabelDoc.label
+                ? `Label ${energyLabelDoc.label}`
+                : "Niet vermeld"}
+            </p>
+            {energyLabelDoc.summary && (
+              <p className="mt-1 text-xs text-brand-700">
+                {energyLabelDoc.summary}
               </p>
-              {documentAnalysis.energyLabel.summary && (
-                <p className="mt-1 text-xs text-brand-700">
-                  {documentAnalysis.energyLabel.summary}
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-xl bg-sky-50 p-3">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-sky-600">
-                Vragenlijst
-              </h3>
-              <p className="text-sm text-brand-900">
-                {documentAnalysis.questionnaire.present
-                  ? "Aanwezig"
-                  : "Niet aanwezig"}
-              </p>
-              {documentAnalysis.questionnaire.summary && (
-                <p className="mt-1 text-xs text-brand-700">
-                  {documentAnalysis.questionnaire.summary}
-                </p>
-              )}
-            </div>
-
-            <div className="rounded-xl bg-sun-50 p-3">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#8a6d1a]">
-                Lijst van zaken
-              </h3>
-              <p className="text-sm text-brand-900">
-                {documentAnalysis.itemsList.present
-                  ? "Aanwezig"
-                  : "Niet aanwezig"}
-              </p>
-              {documentAnalysis.itemsList.summary && (
-                <p className="mt-1 text-xs text-brand-700">
-                  {documentAnalysis.itemsList.summary}
-                </p>
-              )}
-            </div>
+            )}
+            {!energyLabelDoc.label && (
+              <DocumentUpload
+                houseId={house.id}
+                type="energyLabel"
+                label="Energielabel toevoegen"
+                onUploaded={handleDocumentUploaded}
+              />
+            )}
           </div>
 
-          {documentAnalysis.riskFactors.length > 0 && (
-            <div>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-400">
-                Aandachtspunten
-              </h3>
-              <ul className="flex flex-col gap-2">
-                {documentAnalysis.riskFactors.map((risk) => (
-                  <li
-                    key={risk.title}
-                    className="rounded-xl border border-cream-200 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium text-brand-900">
-                        {risk.title}
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${severityStyles(risk.severity)}`}
-                      >
-                        {severityLabel(risk.severity)}
-                      </span>
-                    </div>
-                    {risk.detail && (
-                      <p className="mt-1 text-sm text-brand-700">{risk.detail}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="rounded-xl bg-sky-50 p-3">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-sky-600">
+              Vragenlijst
+            </h3>
+            <p className="text-sm text-brand-900">
+              {questionnaireDoc.present ? "Aanwezig" : "Niet aanwezig"}
+            </p>
+            {questionnaireDoc.summary && (
+              <p className="mt-1 text-xs text-brand-700">
+                {questionnaireDoc.summary}
+              </p>
+            )}
+            {!questionnaireDoc.present && (
+              <DocumentUpload
+                houseId={house.id}
+                type="questionnaire"
+                label="Vragenlijst toevoegen"
+                onUploaded={handleDocumentUploaded}
+              />
+            )}
+          </div>
+
+          <div className="rounded-xl bg-sun-50 p-3">
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#8a6d1a]">
+              Lijst van zaken
+            </h3>
+            <p className="text-sm text-brand-900">
+              {itemsListDoc.present ? "Aanwezig" : "Niet aanwezig"}
+            </p>
+            {itemsListDoc.summary && (
+              <p className="mt-1 text-xs text-brand-700">
+                {itemsListDoc.summary}
+              </p>
+            )}
+            {!itemsListDoc.present && (
+              <DocumentUpload
+                houseId={house.id}
+                type="itemsList"
+                label="Lijst van zaken toevoegen"
+                onUploaded={handleDocumentUploaded}
+              />
+            )}
+          </div>
         </div>
-      )}
+
+        {riskFactors.length > 0 && (
+          <div>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-400">
+              Aandachtspunten
+            </h3>
+            <ul className="flex flex-col gap-2">
+              {riskFactors.map((risk) => (
+                <li
+                  key={risk.title}
+                  className="rounded-xl border border-cream-200 p-3"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-brand-900">
+                      {risk.title}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${severityStyles(risk.severity)}`}
+                    >
+                      {severityLabel(risk.severity)}
+                    </span>
+                  </div>
+                  {risk.detail && (
+                    <p className="mt-1 text-sm text-brand-700">{risk.detail}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       {latest && (
         <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
