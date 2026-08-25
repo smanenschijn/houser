@@ -1,7 +1,7 @@
 import { Cron } from "croner";
 import { runAllEnabledProfiles } from "@/lib/importFunda";
 
-const DEFAULT_CRON = "0 8,13,19 * * *";
+const DEFAULT_CRON = "0 7,12,17,21 * * *";
 const TIMEZONE = "Europe/Amsterdam";
 
 export function startScheduler(): Cron {

@@ -26,13 +26,14 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState(house.status);
   const [progress, setProgress] = useState(house.progress ?? 0);
   const [progressLabel, setProgressLabel] = useState<string | null>(
     house.progressLabel ?? null,
   );
-  const processing = house.status === "processing";
-  const statusRefreshing = house.status === "refreshing";
-  const statusScoring = house.status === "scoring";
+  const processing = status === "processing";
+  const statusRefreshing = status === "refreshing";
+  const statusScoring = status === "scoring";
   const busy = processing || statusRefreshing || statusScoring;
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
         if (cancelled) return;
         const h = data.house;
         if (h) {
+          setStatus(h.status);
           setProgress(h.progress ?? 0);
           setProgressLabel(h.progressLabel ?? null);
         }
@@ -87,13 +89,16 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
   async function handleSync() {
     setSyncing(true);
     setError(null);
+    setStatus("scoring");
     try {
       const res = await fetch(`/api/houses/${house.id}/score`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Scoren mislukt");
+      setStatus("ready");
       queryClient.invalidateQueries({ queryKey: ["houses"] });
       queryClient.invalidateQueries({ queryKey: ["house", house.id] });
     } catch (e) {
+      setStatus("error");
       setError(e instanceof Error ? e.message : "Scoren mislukt");
     } finally {
       setSyncing(false);
@@ -103,6 +108,7 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
   async function handleRefresh() {
     setRefreshing(true);
     setError(null);
+    setStatus("refreshing");
     try {
       const res = await fetch(`/api/houses/${house.id}/refresh`, {
         method: "POST",
@@ -188,7 +194,7 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
                 {house.listingStatus}
               </span>
             )}
-          {house.status === "error" && (
+          {status === "error" && (
             <span className="rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold text-brand-700">
               Verwerking mislukt
             </span>
@@ -352,7 +358,7 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
         </div>
 
         {error && <p className="text-xs text-brand-600">{error}</p>}
-        {house.status === "error" && house.error && (
+        {status === "error" && house.error && (
           <p className="text-xs text-brand-600">{house.error}</p>
         )}
       </div>

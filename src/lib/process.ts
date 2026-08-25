@@ -41,7 +41,7 @@ export async function processHouse(houseId: string, buffer: Buffer) {
         plotSize: extracted.plotSize,
         price: extracted.price,
         address: extracted.address,
-        status: "ready",
+        status: "scoring",
         error: null,
         progress: 100,
         progressLabel: null,
@@ -50,8 +50,15 @@ export async function processHouse(houseId: string, buffer: Buffer) {
 
     try {
       await scoreHouseAndStore(houseId);
+      await prisma.house.update({
+        where: { id: houseId },
+        data: { status: "ready", error: null },
+      });
     } catch (err) {
       console.error(`[processHouse] auto-score ${houseId}: ${err}`);
+      await prisma.house
+        .update({ where: { id: houseId }, data: { status: "ready", error: null } })
+        .catch(() => {});
     }
 
     try {
