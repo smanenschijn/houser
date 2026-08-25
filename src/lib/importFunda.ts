@@ -73,6 +73,7 @@ async function importProfile(profile: ProfileLike): Promise<number> {
   try {
     page = await newFundaPage(browser);
     const refs = await scrapeSearchListingRefs(page, toFilters(profile), MAX_PAGES);
+    const foundIds = new Set(refs.map((ref) => ref.fundaId));
 
     let imported = 0;
     for (const ref of refs) {
@@ -147,6 +148,28 @@ async function importProfile(profile: ProfileLike): Promise<number> {
       }
 
       imported++;
+    }
+
+    const stale = await prisma.house.findMany({
+      where: {
+        searchProfileId: profile.id,
+        archivedAt: null,
+        fundaId: { not: null },
+        listingStatus: { not: "verkocht" },
+      },
+      select: { id: true, fundaId: true },
+    });
+
+    const soldIds = stale
+      .filter((house) => house.fundaId && !foundIds.has(house.fundaId))
+      .map((house) => house.id);
+
+    if (soldIds.length > 0) {
+      await prisma.house.updateMany({
+        where: { id: { in: soldIds } },
+        data: { listingStatus: "verkocht", isNew: false },
+      });
+      console.log(`[importFunda] ${soldIds.length} huizen gemarkeerd als verkocht`);
     }
 
     return imported;
