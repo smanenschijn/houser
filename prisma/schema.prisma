@@ -43,6 +43,7 @@ model House {
   error          String?
   progress       Int      @default(0)
   progressLabel  String?
+  archivedAt     DateTime?
   createdAt      DateTime @default(now())
   scores         Score[]
 }

@@ -55,6 +55,12 @@ export function RootLayout() {
               >
                 Zoekopdrachten
               </Link>
+              <Link
+                to="/archive"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
+              >
+                Archief
+              </Link>
               <button
                 onClick={() => setShowUpload(true)}
                 className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"

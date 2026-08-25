@@ -6,6 +6,7 @@ import { LoginPage } from "@/client/pages/LoginPage";
 import { CriteriaPage } from "@/client/pages/CriteriaPage";
 import { SearchProfilesPage } from "@/client/pages/SearchProfilesPage";
 import { HouseDetailPage } from "@/client/pages/HouseDetailPage";
+import { ArchivePage } from "@/client/pages/ArchivePage";
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +43,14 @@ export const router = createBrowserRouter([
         element: (
           <RequireAuth>
             <HouseDetailPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "archive",
+        element: (
+          <RequireAuth>
+            <ArchivePage />
           </RequireAuth>
         ),
       },

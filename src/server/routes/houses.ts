@@ -22,7 +22,17 @@ export const housesRoutes = new Hono();
 
 housesRoutes.get("/", async (c) => {
   const houses = await prisma.house.findMany({
+    where: { archivedAt: null },
     orderBy: { createdAt: "desc" },
+    include: { scores: { orderBy: { createdAt: "desc" }, take: 1 } },
+  });
+  return c.json({ houses });
+});
+
+housesRoutes.get("/archive", async (c) => {
+  const houses = await prisma.house.findMany({
+    where: { archivedAt: { not: null } },
+    orderBy: { archivedAt: "desc" },
     include: { scores: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
   return c.json({ houses });
@@ -128,6 +138,40 @@ housesRoutes.post("/:id/geocode", async (c) => {
 });
 
 housesRoutes.delete("/:id", async (c) => {
+  const id = c.req.param("id");
+  const house = await prisma.house.findUnique({ where: { id } });
+  if (!house) {
+    return c.json({ error: "Huis niet gevonden" }, 404);
+  }
+
+  if (house.archivedAt) {
+    return c.json({ ok: true });
+  }
+
+  await prisma.house.update({
+    where: { id },
+    data: { archivedAt: new Date() },
+  });
+
+  return c.json({ ok: true });
+});
+
+housesRoutes.post("/:id/restore", async (c) => {
+  const id = c.req.param("id");
+  const house = await prisma.house.findUnique({ where: { id } });
+  if (!house) {
+    return c.json({ error: "Huis niet gevonden" }, 404);
+  }
+
+  await prisma.house.update({
+    where: { id },
+    data: { archivedAt: null },
+  });
+
+  return c.json({ ok: true });
+});
+
+housesRoutes.delete("/:id/permanent", async (c) => {
   const id = c.req.param("id");
   const house = await prisma.house.findUnique({ where: { id } });
   if (!house) {
@@ -270,7 +314,7 @@ housesRoutes.post("/:id/refresh", async (c) => {
 
 housesRoutes.post("/rescore-all", async (c) => {
   const houses = await prisma.house.findMany({
-    where: { rawText: { not: null } },
+    where: { rawText: { not: null }, archivedAt: null },
     select: { id: true },
   });
 

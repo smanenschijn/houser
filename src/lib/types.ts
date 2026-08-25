@@ -32,6 +32,7 @@ export interface HouseDTO {
   progress: number;
   progressLabel: string | null;
   documentAnalysis: DocumentAnalysis | null;
+  archivedAt: string | null;
   createdAt: string;
   scores: ScoreDTO[];
 }

@@ -78,8 +78,12 @@ async function importProfile(profile: ProfileLike): Promise<number> {
     for (const ref of refs) {
       const existing = await prisma.house.findUnique({
         where: { fundaId: ref.fundaId },
-        select: { id: true },
+        select: { id: true, archivedAt: true },
       });
+
+      if (existing?.archivedAt) {
+        continue;
+      }
 
       let listing;
       try {

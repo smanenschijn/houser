@@ -119,7 +119,7 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Weet je zeker dat je dit huis wilt verwijderen?")) {
+    if (!window.confirm("Weet je zeker dat je dit huis wilt archiveren? Je kunt het later herstellen.")) {
       return;
     }
     setError(null);
@@ -127,11 +127,11 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
       const res = await fetch(`/api/houses/${house.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Verwijderen mislukt");
+        throw new Error(data.error ?? "Archiveren mislukt");
       }
       queryClient.invalidateQueries({ queryKey: ["houses"] });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Verwijderen mislukt");
+      setError(e instanceof Error ? e.message : "Archiveren mislukt");
     }
   }
 
@@ -344,7 +344,7 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
                   }}
                   className="flex w-full items-center px-3 py-2 text-left text-sm text-brand-600 hover:bg-brand-50"
                 >
-                  Verwijderen
+                  Archiveren
                 </button>
               </div>
             )}
