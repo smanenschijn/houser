@@ -2,7 +2,13 @@ import type { Coordinates } from "@/lib/geocode";
 
 export type TravelMode = "walking" | "cycling" | "driving";
 
-const OSRM_URL = "https://router.project-osrm.org/route/v1";
+const VALHALLA_URL = "https://valhalla1.openstreetmap.de/route";
+
+const COSTING: Record<TravelMode, string> = {
+  walking: "pedestrian",
+  cycling: "bicycle",
+  driving: "auto",
+};
 
 export interface RouteInfo {
   distanceMeters: number;
@@ -14,30 +20,46 @@ export async function routeBetween(
   to: Coordinates,
   mode: TravelMode,
 ): Promise<RouteInfo | null> {
-  const coords = `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`;
-  const url = `${OSRM_URL}/${mode}/${coords}?overview=false`;
+  const body = {
+    locations: [
+      { lat: from.latitude, lon: from.longitude },
+      { lat: to.latitude, lon: to.longitude },
+    ],
+    costing: COSTING[mode],
+    units: "kilometers",
+  };
 
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "houser-app/0.1 (local real-estate tool)" },
+    const res = await fetch(VALHALLA_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "houser-app/0.1 (local real-estate tool)",
+      },
+      body: JSON.stringify(body),
       cache: "no-store",
     });
 
     if (!res.ok) return null;
 
     const data = (await res.json()) as {
-      code?: string;
-      routes?: { distance?: number; duration?: number }[];
+      trip?: { summary?: { length?: number; time?: number } };
+      error_code?: number;
     };
 
-    if (data.code !== "Ok" || !data.routes?.[0]) return null;
+    if (data.error_code) return null;
 
-    const { distance, duration } = data.routes[0];
-    if (typeof distance !== "number" || typeof duration !== "number") return null;
+    const summary = data.trip?.summary;
+    if (!summary || typeof summary.length !== "number" || typeof summary.time !== "number") {
+      return null;
+    }
 
-    return { distanceMeters: distance, durationSeconds: duration };
+    return {
+      distanceMeters: Math.round(summary.length * 1000),
+      durationSeconds: Math.round(summary.time),
+    };
   } catch (err) {
-    console.error(`[routing] ${mode} ${coords}:`, err);
+    console.error(`[routing] ${mode}:`, err);
     return null;
   }
 }

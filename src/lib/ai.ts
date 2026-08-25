@@ -298,7 +298,7 @@ Rules:
   }
 
   if (lines.length === 0) return null;
-  return `Verified travel distances (computed with OpenStreetMap routing for the matching travel mode):\n${lines.join("\n")}`;
+  return `Verified travel distances (computed with OpenStreetMap/Valhalla routing for the matching travel mode):\n${lines.join("\n")}`;
 }
 
 export async function scoreHouse(
