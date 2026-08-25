@@ -2,6 +2,8 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateObject } from "ai";
 import { z } from "zod";
 import type { DocumentAnalysis, DocumentSectionType } from "@/lib/types";
+import { geocodeAddress } from "@/lib/geocode";
+import { routeBetween } from "@/lib/routing";
 
 const provider = createOpenAICompatible({
   name: "opencode-go",
@@ -227,6 +229,78 @@ export interface ScoringResult {
   summary: string;
 }
 
+const routingExtractionSchema = z.object({
+  requests: z.array(
+    z.object({
+      criterionName: z
+        .string()
+        .describe("Exact criterion name this request belongs to"),
+      destination: z
+        .string()
+        .nullable()
+        .describe(
+          "Full, searchable destination place name including the city, e.g. 'Utrecht Centraal Station'. Null when the criterion is not about distance/proximity.",
+        ),
+      mode: z
+        .enum(["walking", "cycling", "driving"])
+        .nullable()
+        .describe(
+          "Travel mode that best matches the criterion. Null when not a proximity criterion.",
+        ),
+    }),
+  ),
+});
+
+async function computeRoutingContext(
+  address: string,
+  criteria: ScoringCriteria[],
+): Promise<string | null> {
+  const criteriaText = criteria
+    .map(
+      (c) =>
+        `- ${c.name}${c.description ? `: ${c.description}` : ""}`,
+    )
+    .join("\n");
+
+  const { object } = await generateObject({
+    model: provider.chatModel(modelId),
+    schema: routingExtractionSchema,
+    system: `You identify which scoring criteria require a real travel-distance check.
+
+Respond with a JSON object using EXACTLY this shape, no other keys:
+{"requests": [{"criterionName": string, "destination": string|null, "mode": "walking"|"cycling"|"driving"|null}]}
+
+Rules:
+- For every criterion you MUST return exactly one entry (in the same order), even if it is not about distance/proximity.
+- If a criterion involves distance, travel time or proximity to a place (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ...", "binnen 15 min fietsen van ..."), set "destination" to a full, searchable place name including the city (derive the city from the property address when possible) and choose the most appropriate "mode".
+- Choose "mode" by reading the criterion text: walking for "loopafstand", "lopen", "te voet", "wandelen"; cycling for "fiets", "fietsafstand"; otherwise driving.
+- If a criterion is not about distance/proximity, set both "destination" and "mode" to null.`,
+    prompt: `Property address:\n${address}\n\nCriteria:\n${criteriaText}`,
+  });
+
+  const origin = await geocodeAddress(address);
+  if (!origin) return null;
+
+  const lines: string[] = [];
+
+  for (const req of object.requests) {
+    if (!req.destination || !req.mode) continue;
+    const destination = await geocodeAddress(req.destination);
+    if (!destination) continue;
+    const route = await routeBetween(origin, destination, req.mode);
+    if (!route) continue;
+
+    const km = (route.distanceMeters / 1000).toFixed(1);
+    const mins = Math.round(route.durationSeconds / 60);
+    lines.push(
+      `- "${req.criterionName}" → "${req.destination}": ${km} km / ${mins} min per ${req.mode}`,
+    );
+  }
+
+  if (lines.length === 0) return null;
+  return `Verified travel distances (computed with OpenStreetMap routing for the matching travel mode):\n${lines.join("\n")}`;
+}
+
 export async function scoreHouse(
   rawText: string,
   description: string | null,
@@ -242,6 +316,15 @@ export async function scoreHouse(
     )
     .join("\n");
 
+  let routingContext: string | null = null;
+  if (address) {
+    try {
+      routingContext = await computeRoutingContext(address, criteria);
+    } catch (err) {
+      console.error(`[scoreHouse] routing context ${address}:`, err);
+    }
+  }
+
   const { object } = await generateObject({
     model: provider.chatModel(modelId),
     schema: scoringSchema,
@@ -255,9 +338,9 @@ Rules:
 - "score" is a number from 0 to 10.
 - Write every "rationale" and the "summary" in Dutch.
 - Be strict and consistent across houses.
-- When a criterion involves a distance, travel time, or proximity (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ..."), do NOT guess or assume the distance from the brochure alone. Verify the actual distance by searching (web search or a maps application such as Google Maps) using the property's address, and base the score on what you find.`,
+- When a criterion involves a distance, travel time, or proximity (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ..."), base the score on the "Verified travel distances" section when it contains a value for that criterion. Use those real, mode-specific distances/times (never convert a car distance into walking or cycling minutes yourself). If no verified value is available for such a criterion, state that the distance could not be verified and score conservatively instead of guessing.`,
 
-    prompt: `Score this property against the criteria below. Use EXACTLY these criterion names (one item per criterion, no extras): ${names}\n\nCriteria:\n${criteriaText}\n\nProperty address:\n${address ?? "n/a"}\n\nAsking price:\n${price != null ? `€${price}` : "n/a"}\n\nProperty description:\n${description ?? "n/a"}\n\nProperty brochure text:\n${rawText.slice(0, 20000)}\n\nRemember: for distance/proximity criteria, verify the actual distance via search or maps instead of assuming. Write all rationales and the summary in Dutch.`,
+    prompt: `Score this property against the criteria below. Use EXACTLY these criterion names (one item per criterion, no extras): ${names}\n\nCriteria:\n${criteriaText}\n\nProperty address:\n${address ?? "n/a"}\n\nAsking price:\n${price != null ? `€${price}` : "n/a"}\n\nProperty description:\n${description ?? "n/a"}\n\n${routingContext ? `${routingContext}\n\n` : ""}Property brochure text:\n${rawText.slice(0, 20000)}\n\nRemember: for distance/proximity criteria use the verified distances above where available; never derive walking/cycling minutes from a car distance. Write all rationales and the summary in Dutch.`,
   });
 
   const totalWeight = criteria.reduce((s, c) => s + c.weight, 0) || 1;
