@@ -91,7 +91,10 @@ housesRoutes.get("/:id", async (c) => {
   const id = c.req.param("id");
   const house = await prisma.house.findUnique({
     where: { id },
-    include: { scores: { orderBy: { createdAt: "desc" } } },
+    include: {
+      scores: { orderBy: { createdAt: "desc" } },
+      review: true,
+    },
   });
   if (!house) {
     return c.json({ error: "Huis niet gevonden" }, 404);
@@ -366,4 +369,47 @@ housesRoutes.post("/:id/score", requireAuth, async (c) => {
       .catch(() => {});
     return c.json({ error: message }, 500);
   }
+});
+
+housesRoutes.put("/:id/review", requireAuth, async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json().catch(() => null);
+  const text = typeof body?.text === "string" ? body.text.trim() : "";
+
+  if (!text) {
+    return c.json({ error: "Geen reviewtekst opgegeven" }, 400);
+  }
+
+  const house = await prisma.house.findUnique({ where: { id } });
+  if (!house) {
+    return c.json({ error: "Huis niet gevonden" }, 404);
+  }
+
+  const review = await prisma.review.upsert({
+    where: { houseId: id },
+    update: { text },
+    create: { houseId: id, text },
+  });
+
+  await prisma.house.update({
+    where: { id },
+    data: { status: "scoring", error: null },
+  });
+
+  scoreHouseAndStore(id)
+    .then(() =>
+      prisma.house.update({
+        where: { id },
+        data: { status: "ready", error: null },
+      }),
+    )
+    .catch((err) => {
+      const message = err instanceof Error ? err.message : "Scoren mislukt";
+      console.error(`[review] score ${id}:`, err);
+      return prisma.house
+        .update({ where: { id }, data: { status: "error", error: message } })
+        .catch(() => {});
+    });
+
+  return c.json({ review });
 });

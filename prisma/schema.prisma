@@ -54,6 +54,7 @@ model House {
   archivedAt     DateTime?
   createdAt      DateTime @default(now())
   scores         Score[]
+  review         Review?
 }
 
 model SearchProfile {
@@ -84,4 +85,13 @@ model Score {
   createdAt        DateTime @default(now())
 
   @@index([houseId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  houseId   String   @unique
+  house     House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -3,7 +3,10 @@ import { prisma } from "@/lib/db";
 import { scoreHouse } from "@/lib/ai";
 
 export async function scoreHouseAndStore(houseId: string) {
-  const house = await prisma.house.findUnique({ where: { id: houseId } });
+  const house = await prisma.house.findUnique({
+    where: { id: houseId },
+    include: { review: true },
+  });
   if (!house) throw new Error("Huis niet gevonden");
 
   const criteria = await prisma.criteria.findMany({ orderBy: { createdAt: "asc" } });
@@ -18,6 +21,7 @@ export async function scoreHouseAndStore(houseId: string) {
     house.address,
     house.price,
     schools.map((s) => ({ name: s.name, address: s.address })),
+    house.review?.text ?? null,
   );
 
   const score = await prisma.score.create({

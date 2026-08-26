@@ -11,6 +11,14 @@ export interface ScoreDTO {
   createdAt: string;
 }
 
+export interface ReviewDTO {
+  id: string;
+  houseId: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface HouseDTO {
   id: string;
   title: string | null;
@@ -35,6 +43,7 @@ export interface HouseDTO {
   archivedAt: string | null;
   createdAt: string;
   scores: ScoreDTO[];
+  review: ReviewDTO | null;
 }
 
 export interface SearchProfileDTO {

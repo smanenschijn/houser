@@ -1,10 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ImageCarousel from "@/client/components/ImageCarousel";
 import HouseMap from "@/client/components/HouseMap";
 import DocumentUpload from "@/client/components/DocumentUpload";
-import type { ScoreDTO, DocumentAnalysis, RiskSeverity } from "@/lib/types";
+import type {
+  ScoreDTO,
+  DocumentAnalysis,
+  RiskSeverity,
+  ReviewDTO,
+} from "@/lib/types";
 import { statusBadgeClass } from "@/client/lib/status";
 import { api } from "@/client/lib/api";
 import { useAuth } from "@/client/lib/useAuth";
@@ -33,6 +38,7 @@ interface HouseDetail {
   progressLabel: string | null;
   createdAt: string;
   scores: ScoreDTO[];
+  review: ReviewDTO | null;
 }
 
 function formatEuro(value: number | null): string {
@@ -66,6 +72,120 @@ function severityLabel(severity: RiskSeverity): string {
   if (severity === "high") return "Hoog risico";
   if (severity === "medium") return "Middel risico";
   return "Laag risico";
+}
+
+interface ReviewSectionProps {
+  houseId: string;
+  review: ReviewDTO | null;
+  authed: boolean;
+  onSaved: (review: ReviewDTO) => void;
+}
+
+function ReviewSection({
+  houseId,
+  review,
+  authed,
+  onSaved,
+}: ReviewSectionProps) {
+  const [text, setText] = useState(review?.text ?? "");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!authed) {
+    return null;
+  }
+
+  const hasReview = Boolean(review?.text);
+
+  async function handleSave() {
+    if (!text.trim()) {
+      setError("Schrijf eerst je review");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const saved = await api.put<{ review: ReviewDTO }>(
+        `/api/houses/${houseId}/review`,
+        { text: text.trim() },
+      );
+      setEditing(false);
+      onSaved(saved.review);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Opslaan mislukt");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!editing && hasReview) {
+    return (
+      <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-400">
+            Mijn review
+          </h2>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 transition-colors hover:border-brand-400 hover:bg-brand-50"
+          >
+            Bewerken
+          </button>
+        </div>
+        <p className="whitespace-pre-line text-brand-900">{review?.text}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-cream-200 bg-white p-5 shadow-sm">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-400">
+        {hasReview ? "Review bewerken" : "Review na bezichtiging"}
+      </h2>
+      <p className="mb-3 text-sm text-brand-700">
+        Noteer je indruk van de bezichtiging. De score wordt na het opslaan
+        opnieuw berekend met jouw review.
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={5}
+        placeholder="Wat viel je op tijdens de bezichtiging?"
+        className="w-full resize-y rounded-xl border border-cream-200 bg-cream-50 px-3 py-2 text-brand-900 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-300"
+      />
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:pointer-events-none disabled:opacity-60"
+        >
+          {saving && (
+            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          )}
+          {saving ? "Opslaan…" : "Review opslaan"}
+        </button>
+        {hasReview && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(false);
+              setText(review?.text ?? "");
+            }}
+            className="rounded-lg border border-cream-200 px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-cream-50"
+          >
+            Annuleren
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-2 text-sm text-brand-600">{error}</p>}
+    </div>
+  );
 }
 
 export function HouseDetailPage() {
@@ -180,6 +300,13 @@ export function HouseDetailPage() {
     queryClient.setQueryData<{ house: HouseDetail }>(["house", id], (old) => {
       if (!old) return old;
       return { ...old, house: { ...old.house, documentAnalysis: next } };
+    });
+  }
+
+  function handleReviewSaved(review: ReviewDTO) {
+    queryClient.setQueryData<{ house: HouseDetail }>(["house", id], (old) => {
+      if (!old) return old;
+      return { ...old, house: { ...old.house, review } };
     });
   }
 
@@ -450,6 +577,15 @@ export function HouseDetailPage() {
             </ul>
           </div>
         )}
+      </div>
+
+      <div className="mb-8">
+        <ReviewSection
+          houseId={house.id}
+          review={house.review ?? null}
+          authed={authed}
+          onSaved={handleReviewSaved}
+        />
       </div>
 
       {latest && (

@@ -370,6 +370,7 @@ export async function scoreHouse(
   address: string | null = null,
   price: number | null = null,
   schools: SchoolLocation[] = [],
+  review: string | null = null,
 ): Promise<ScoringResult> {
   const names = criteria.map((c) => c.name).join(", ");
   const criteriaText = criteria
@@ -401,9 +402,10 @@ Rules:
 - "score" is a number from 0 to 10.
 - Write every "rationale" and the "summary" in Dutch.
 - Be strict and consistent across houses.
-- When a criterion involves a distance, travel time, or proximity (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ..."), base the score on the "Verified travel distances" section when it contains a value for that criterion. Use those real, mode-specific distances/times (never convert a car distance into walking or cycling minutes yourself). For primary school (basisschool) criteria, use the measured distances to the configured schools and base the score on the nearest school. If no verified value is available for such a criterion, state that the distance could not be verified and score conservatively instead of guessing.`,
+- When a criterion involves a distance, travel time, or proximity (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ..."), base the score on the "Verified travel distances" section when it contains a value for that criterion. Use those real, mode-specific distances/times (never convert a car distance into walking or cycling minutes yourself). For primary school (basisschool) criteria, use the measured distances to the configured schools and base the score on the nearest school. If no verified value is available for such a criterion, state that the distance could not be verified and score conservatively instead of guessing.
+- When a "Review after viewing" is provided, take it into account: it reflects what the user actually observed during a physical viewing and may contradict or refine the brochure. Let it meaningfully influence the relevant criterion scores and the overall summary.`,
 
-    prompt: `Score this property against the criteria below. Use EXACTLY these criterion names (one item per criterion, no extras): ${names}\n\nCriteria:\n${criteriaText}\n\nProperty address:\n${address ?? "n/a"}\n\nAsking price:\n${price != null ? `€${price}` : "n/a"}\n\nProperty description:\n${description ?? "n/a"}\n\n${routingContext ? `${routingContext}\n\n` : ""}Property brochure text:\n${rawText.slice(0, 20000)}\n\nRemember: for distance/proximity criteria use the verified distances above where available; never derive walking/cycling minutes from a car distance. Write all rationales and the summary in Dutch.`,
+    prompt: `Score this property against the criteria below. Use EXACTLY these criterion names (one item per criterion, no extras): ${names}\n\nCriteria:\n${criteriaText}\n\nProperty address:\n${address ?? "n/a"}\n\nAsking price:\n${price != null ? `€${price}` : "n/a"}\n\nProperty description:\n${description ?? "n/a"}\n\n${review ? `Review after viewing:\n${review}\n\n` : ""}${routingContext ? `${routingContext}\n\n` : ""}Property brochure text:\n${rawText.slice(0, 20000)}\n\nRemember: for distance/proximity criteria use the verified distances above where available; never derive walking/cycling minutes from a car distance. When a review after viewing is provided, take it into account. Write all rationales and the summary in Dutch.`,
   });
 
   const totalWeight = criteria.reduce((s, c) => s + c.weight, 0) || 1;
