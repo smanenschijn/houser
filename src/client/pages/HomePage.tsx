@@ -6,8 +6,31 @@ import type { HouseDTO } from "@/lib/types";
 import { LISTING_STATUSES } from "@/lib/listingStatus";
 import { api } from "@/client/lib/api";
 
+type SortKey = "dateAdded" | "score" | "livingArea" | "plotSize";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "dateAdded", label: "Datum toegevoegd" },
+  { value: "score", label: "Score" },
+  { value: "livingArea", label: "Woonoppervlak" },
+  { value: "plotSize", label: "Perceel" },
+];
+
+function sortValue(house: HouseDTO, sortKey: SortKey): number | null {
+  switch (sortKey) {
+    case "score":
+      return house.scores[0]?.total ?? null;
+    case "livingArea":
+      return house.livingArea;
+    case "plotSize":
+      return house.plotSize;
+    case "dateAdded":
+      return new Date(house.createdAt).getTime();
+  }
+}
+
 export function HomePage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("dateAdded");
   const { data, isLoading } = useQuery({
     queryKey: ["houses"],
     queryFn: () => api.get<{ houses: HouseDTO[] }>("/api/houses"),
@@ -16,12 +39,12 @@ export function HomePage() {
   const houses = (data?.houses ?? [])
     .filter((h) => statusFilter === "all" || h.listingStatus === statusFilter)
     .sort((a, b) => {
-      const scoreA = a.scores[0]?.total;
-      const scoreB = b.scores[0]?.total;
-      if (scoreA == null && scoreB == null) return 0;
-      if (scoreA == null) return -1;
-      if (scoreB == null) return 1;
-      return scoreB - scoreA;
+      const valueA = sortValue(a, sortKey);
+      const valueB = sortValue(b, sortKey);
+      if (valueA == null && valueB == null) return 0;
+      if (valueA == null) return 1;
+      if (valueB == null) return -1;
+      return valueB - valueA;
     });
 
   const hasListings = houses.length > 0;
@@ -52,6 +75,21 @@ export function HomePage() {
             {LISTING_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
+              </option>
+            ))}
+          </select>
+
+          <label className="text-sm font-medium text-brand-700">
+            Sorteren:
+          </label>
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
+            className="rounded-xl border border-cream-300 bg-cream-50 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:bg-white"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
