@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/server/auth";
 
 const criteriaSchema = z.array(
   z.object({
@@ -11,6 +12,8 @@ const criteriaSchema = z.array(
 );
 
 export const criteriaRoutes = new Hono();
+
+criteriaRoutes.use("*", requireAuth);
 
 criteriaRoutes.get("/", async (c) => {
   const criteria = await prisma.criteria.findMany({

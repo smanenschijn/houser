@@ -8,11 +8,13 @@ export default function ImageCarousel({
   title,
   houseId,
   tileImage,
+  authed = false,
 }: {
   images: string[];
   title: string;
   houseId?: string;
   tileImage?: string | null;
+  authed?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [index, setIndex] = useState(0);
@@ -21,7 +23,7 @@ export default function ImageCarousel({
   const [error, setError] = useState<string | null>(null);
 
   const count = images.length;
-  const manageable = Boolean(houseId);
+  const manageable = Boolean(houseId) && authed;
 
   const goTo = (next: number) => {
     if (count === 0) return;

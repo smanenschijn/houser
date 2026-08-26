@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { HouseDTO } from "@/lib/types";
 import { statusBadgeClass } from "@/client/lib/status";
+import { useAuth } from "@/client/lib/useAuth";
 
 function formatEuro(value: number | null): string {
   if (value == null) return "—";
@@ -21,6 +22,7 @@ function scoreColor(total: number): string {
 
 export default function HouseTile({ house }: { house: HouseDTO }) {
   const queryClient = useQueryClient();
+  const { authed } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -294,67 +296,69 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
           <span className="text-base font-semibold text-brand-900">
             {formatEuro(house.price)}
           </span>
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen((open) => !open)}
-              className="flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-600"
-            >
-              Acties
-              <svg
-                className={`h-3.5 w-3.5 transition-transform ${menuOpen ? "rotate-180" : ""}`}
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
+          {authed && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen((open) => !open)}
+                className="flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-600"
               >
-                <path
-                  d="M6 9l6 6 6-6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-
-            {menuOpen && (
-              <div className="absolute right-0 top-full z-10 mt-1 w-48 overflow-hidden rounded-xl border border-cream-200 bg-white py-1 shadow-lg">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    handleSync();
-                  }}
-                  disabled={syncing || processing}
-                  className="flex w-full items-center px-3 py-2 text-left text-sm text-brand-900 hover:bg-brand-50 disabled:opacity-60"
+                Acties
+                <svg
+                  className={`h-3.5 w-3.5 transition-transform ${menuOpen ? "rotate-180" : ""}`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
                 >
-                  {syncing ? "Bezig met bijwerken…" : "Score bijwerken"}
-                </button>
-                {house.source === "funda" && (
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-10 mt-1 w-48 overflow-hidden rounded-xl border border-cream-200 bg-white py-1 shadow-lg">
                   <button
                     onClick={() => {
                       setMenuOpen(false);
-                      handleRefresh();
+                      handleSync();
                     }}
-                    disabled={refreshing || statusRefreshing || processing}
+                    disabled={syncing || processing}
                     className="flex w-full items-center px-3 py-2 text-left text-sm text-brand-900 hover:bg-brand-50 disabled:opacity-60"
                   >
-                    {refreshing || statusRefreshing
-                      ? "Verversen…"
-                      : "Huis verversen"}
+                    {syncing ? "Bezig met bijwerken…" : "Score bijwerken"}
                   </button>
-                )}
-                <div className="my-1 h-px bg-cream-200" />
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    handleDelete();
-                  }}
-                  className="flex w-full items-center px-3 py-2 text-left text-sm text-brand-600 hover:bg-brand-50"
-                >
-                  Archiveren
-                </button>
-              </div>
-            )}
-          </div>
+                  {house.source === "funda" && (
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        handleRefresh();
+                      }}
+                      disabled={refreshing || statusRefreshing || processing}
+                      className="flex w-full items-center px-3 py-2 text-left text-sm text-brand-900 hover:bg-brand-50 disabled:opacity-60"
+                    >
+                      {refreshing || statusRefreshing
+                        ? "Verversen…"
+                        : "Huis verversen"}
+                    </button>
+                  )}
+                  <div className="my-1 h-px bg-cream-200" />
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleDelete();
+                    }}
+                    className="flex w-full items-center px-3 py-2 text-left text-sm text-brand-600 hover:bg-brand-50"
+                  >
+                    Archiveren
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {error && <p className="text-xs text-brand-600">{error}</p>}

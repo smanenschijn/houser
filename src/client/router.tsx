@@ -15,11 +15,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <RequireAuth>
-            <HomePage />
-          </RequireAuth>
-        ),
+        element: <HomePage />,
       },
       { path: "login", element: <LoginPage /> },
       {
@@ -40,19 +36,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "houses/:id",
-        element: (
-          <RequireAuth>
-            <HouseDetailPage />
-          </RequireAuth>
-        ),
+        element: <HouseDetailPage />,
       },
       {
         path: "archive",
-        element: (
-          <RequireAuth>
-            <ArchivePage />
-          </RequireAuth>
-        ),
+        element: <ArchivePage />,
       },
     ],
   },

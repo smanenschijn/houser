@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/server/auth";
 
 const schoolsSchema = z.array(
   z.object({
@@ -10,6 +11,8 @@ const schoolsSchema = z.array(
 );
 
 export const schoolsRoutes = new Hono();
+
+schoolsRoutes.use("*", requireAuth);
 
 schoolsRoutes.get("/", async (c) => {
   const schools = await prisma.school.findMany({

@@ -7,6 +7,7 @@ import DocumentUpload from "@/client/components/DocumentUpload";
 import type { ScoreDTO, DocumentAnalysis, RiskSeverity } from "@/lib/types";
 import { statusBadgeClass } from "@/client/lib/status";
 import { api } from "@/client/lib/api";
+import { useAuth } from "@/client/lib/useAuth";
 
 interface HouseDetail {
   id: string;
@@ -70,6 +71,7 @@ function severityLabel(severity: RiskSeverity): string {
 export function HouseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { authed } = useAuth();
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["house", id],
@@ -86,7 +88,7 @@ export function HouseDetailPage() {
   const house = data?.house;
 
   useEffect(() => {
-    if (!house) return;
+    if (!house || !authed) return;
     const needsGeocode =
       house.address &&
       (house.latitude == null || house.longitude == null) &&
@@ -108,10 +110,10 @@ export function HouseDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [house, queryClient]);
+  }, [house, authed, queryClient]);
 
   useEffect(() => {
-    if (!house?.isNew) return;
+    if (!house?.isNew || !authed) return;
     api
       .post(`/api/houses/${house.id}/seen`)
       .then(() => {
@@ -123,7 +125,7 @@ export function HouseDetailPage() {
         );
       })
       .catch(() => {});
-  }, [house?.isNew, house?.id, queryClient]);
+  }, [house?.isNew, house?.id, authed, queryClient]);
 
   if (isLoading) {
     return (
@@ -301,6 +303,7 @@ export function HouseDetailPage() {
           title={title}
           houseId={house.id}
           tileImage={house.imagePath}
+          authed={authed}
         />
       )}
 
@@ -348,17 +351,19 @@ export function HouseDetailPage() {
                 {energyLabelDoc.summary}
               </p>
             )}
-            <DocumentUpload
-              houseId={house.id}
-              type="energyLabel"
-              label={
-                energyLabelDoc.label
-                  ? "Energielabel vervangen"
-                  : "Energielabel toevoegen"
-              }
-              replace={Boolean(energyLabelDoc.label)}
-              onUploaded={handleDocumentUploaded}
-            />
+            {authed && (
+              <DocumentUpload
+                houseId={house.id}
+                type="energyLabel"
+                label={
+                  energyLabelDoc.label
+                    ? "Energielabel vervangen"
+                    : "Energielabel toevoegen"
+                }
+                replace={Boolean(energyLabelDoc.label)}
+                onUploaded={handleDocumentUploaded}
+              />
+            )}
           </div>
 
           <div className="rounded-xl bg-sky-50 p-3">
@@ -373,17 +378,19 @@ export function HouseDetailPage() {
                 {questionnaireDoc.summary}
               </p>
             )}
-            <DocumentUpload
-              houseId={house.id}
-              type="questionnaire"
-              label={
-                questionnaireDoc.present
-                  ? "Vragenlijst vervangen"
-                  : "Vragenlijst toevoegen"
-              }
-              replace={Boolean(questionnaireDoc.present)}
-              onUploaded={handleDocumentUploaded}
-            />
+            {authed && (
+              <DocumentUpload
+                houseId={house.id}
+                type="questionnaire"
+                label={
+                  questionnaireDoc.present
+                    ? "Vragenlijst vervangen"
+                    : "Vragenlijst toevoegen"
+                }
+                replace={Boolean(questionnaireDoc.present)}
+                onUploaded={handleDocumentUploaded}
+              />
+            )}
           </div>
 
           <div className="rounded-xl bg-sun-50 p-3">
@@ -398,17 +405,19 @@ export function HouseDetailPage() {
                 {itemsListDoc.summary}
               </p>
             )}
-            <DocumentUpload
-              houseId={house.id}
-              type="itemsList"
-              label={
-                itemsListDoc.present
-                  ? "Lijst van zaken vervangen"
-                  : "Lijst van zaken toevoegen"
-              }
-              replace={Boolean(itemsListDoc.present)}
-              onUploaded={handleDocumentUploaded}
-            />
+            {authed && (
+              <DocumentUpload
+                houseId={house.id}
+                type="itemsList"
+                label={
+                  itemsListDoc.present
+                    ? "Lijst van zaken vervangen"
+                    : "Lijst van zaken toevoegen"
+                }
+                replace={Boolean(itemsListDoc.present)}
+                onUploaded={handleDocumentUploaded}
+              />
+            )}
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/server/auth";
 import { processHouse } from "@/lib/process";
 import { analyzeUploadedDocumentAndStore } from "@/lib/documents";
 import { parsePdfText } from "@/lib/pdf";
@@ -38,7 +39,7 @@ housesRoutes.get("/archive", async (c) => {
   return c.json({ houses });
 });
 
-housesRoutes.post("/", async (c) => {
+housesRoutes.post("/", requireAuth, async (c) => {
   const limit = rateLimit(`upload:${getClientIp(c.req.raw)}`, {
     limit: 20,
     windowMs: 60 * 60 * 1000,
@@ -98,7 +99,7 @@ housesRoutes.get("/:id", async (c) => {
   return c.json({ house });
 });
 
-housesRoutes.post("/:id/seen", async (c) => {
+housesRoutes.post("/:id/seen", requireAuth, async (c) => {
   const id = c.req.param("id");
   const house = await prisma.house.findUnique({
     where: { id },
@@ -113,7 +114,7 @@ housesRoutes.post("/:id/seen", async (c) => {
   return c.json({ ok: true });
 });
 
-housesRoutes.post("/:id/geocode", async (c) => {
+housesRoutes.post("/:id/geocode", requireAuth, async (c) => {
   const id = c.req.param("id");
   const house = await prisma.house.findUnique({ where: { id } });
   if (!house) {
@@ -137,7 +138,7 @@ housesRoutes.post("/:id/geocode", async (c) => {
   return c.json(coords ?? { latitude: null, longitude: null });
 });
 
-housesRoutes.delete("/:id", async (c) => {
+housesRoutes.delete("/:id", requireAuth, async (c) => {
   const id = c.req.param("id");
   const house = await prisma.house.findUnique({ where: { id } });
   if (!house) {
@@ -156,7 +157,7 @@ housesRoutes.delete("/:id", async (c) => {
   return c.json({ ok: true });
 });
 
-housesRoutes.post("/:id/restore", async (c) => {
+housesRoutes.post("/:id/restore", requireAuth, async (c) => {
   const id = c.req.param("id");
   const house = await prisma.house.findUnique({ where: { id } });
   if (!house) {
@@ -171,7 +172,7 @@ housesRoutes.post("/:id/restore", async (c) => {
   return c.json({ ok: true });
 });
 
-housesRoutes.delete("/:id/permanent", async (c) => {
+housesRoutes.delete("/:id/permanent", requireAuth, async (c) => {
   const id = c.req.param("id");
   const house = await prisma.house.findUnique({ where: { id } });
   if (!house) {
@@ -184,7 +185,7 @@ housesRoutes.delete("/:id/permanent", async (c) => {
   return c.json({ ok: true });
 });
 
-housesRoutes.patch("/:id/image", async (c) => {
+housesRoutes.patch("/:id/image", requireAuth, async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const imagePath = typeof body?.imagePath === "string" ? body.imagePath : null;
@@ -207,7 +208,7 @@ housesRoutes.patch("/:id/image", async (c) => {
   return c.json({ ok: true, imagePath });
 });
 
-housesRoutes.delete("/:id/image", async (c) => {
+housesRoutes.delete("/:id/image", requireAuth, async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json().catch(() => null);
   const imagePath = typeof body?.imagePath === "string" ? body.imagePath : null;
@@ -238,7 +239,7 @@ housesRoutes.delete("/:id/image", async (c) => {
   return c.json({ ok: true, imagePath: imagePathUpdate });
 });
 
-housesRoutes.post("/:id/documents/:type", async (c) => {
+housesRoutes.post("/:id/documents/:type", requireAuth, async (c) => {
   const id = c.req.param("id");
   const type = c.req.param("type") as DocumentSectionType;
 
@@ -283,7 +284,7 @@ housesRoutes.post("/:id/documents/:type", async (c) => {
   return c.json({ documentAnalysis });
 });
 
-housesRoutes.post("/:id/refresh", async (c) => {
+housesRoutes.post("/:id/refresh", requireAuth, async (c) => {
   const id = c.req.param("id");
 
   const house = await prisma.house.findUnique({ where: { id } });
@@ -312,7 +313,7 @@ housesRoutes.post("/:id/refresh", async (c) => {
   return c.json({ ok: true });
 });
 
-housesRoutes.post("/rescore-all", async (c) => {
+housesRoutes.post("/rescore-all", requireAuth, async (c) => {
   const houses = await prisma.house.findMany({
     where: { rawText: { not: null }, archivedAt: null },
     select: { id: true },
@@ -335,7 +336,7 @@ housesRoutes.post("/rescore-all", async (c) => {
   return c.json({ ok: true, count: ids.length });
 });
 
-housesRoutes.post("/:id/score", async (c) => {
+housesRoutes.post("/:id/score", requireAuth, async (c) => {
   const id = c.req.param("id");
 
   const house = await prisma.house.findUnique({ where: { id } });

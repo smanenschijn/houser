@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HouseDTO } from "@/lib/types";
 import { api } from "@/client/lib/api";
+import { useAuth } from "@/client/lib/useAuth";
 
 function formatEuro(value: number | null): string {
   if (value == null) return "—";
@@ -14,6 +15,7 @@ function formatEuro(value: number | null): string {
 
 export function ArchivePage() {
   const queryClient = useQueryClient();
+  const { authed } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["houses", "archive"],
     queryFn: () => api.get<{ houses: HouseDTO[] }>("/api/houses/archive"),
@@ -114,18 +116,22 @@ export function ArchivePage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    onClick={() => handleRestore(house)}
-                    className="rounded-lg bg-leaf-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-leaf-600"
-                  >
-                    Herstellen
-                  </button>
-                  <button
-                    onClick={() => handlePermanentDelete(house)}
-                    className="rounded-lg bg-brand-100 px-3 py-1.5 text-sm font-medium text-brand-600 transition-colors hover:bg-brand-200"
-                  >
-                    Definitief verwijderen
-                  </button>
+                  {authed && (
+                    <>
+                      <button
+                        onClick={() => handleRestore(house)}
+                        className="rounded-lg bg-leaf-500 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-leaf-600"
+                      >
+                        Herstellen
+                      </button>
+                      <button
+                        onClick={() => handlePermanentDelete(house)}
+                        className="rounded-lg bg-brand-100 px-3 py-1.5 text-sm font-medium text-brand-600 transition-colors hover:bg-brand-200"
+                      >
+                        Definitief verwijderen
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

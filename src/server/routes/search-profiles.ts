@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/server/auth";
 import { runSearchProfile, runAllEnabledProfiles } from "@/lib/importFunda";
 
 const profileSchema = z.object({
@@ -14,6 +15,8 @@ const profileSchema = z.object({
 });
 
 export const searchProfilesRoutes = new Hono();
+
+searchProfilesRoutes.use("*", requireAuth);
 
 searchProfilesRoutes.get("/", async (c) => {
   const profiles = await prisma.searchProfile.findMany({
