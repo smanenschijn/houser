@@ -11,7 +11,7 @@ const provider = createOpenAICompatible({
   apiKey: process.env.OPENCODE_GO_API_KEY,
 });
 
-const modelId = process.env.OPENCODE_GO_MODEL ?? "deepseek-v4-pro";
+const modelId = process.env.OPENCODE_GO_MODEL ?? "deepseek-v4-flash";
 
 export const houseExtractionSchema = z.object({
   title: z
