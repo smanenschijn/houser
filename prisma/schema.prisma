@@ -16,6 +16,14 @@ model Criteria {
   updatedAt   DateTime @updatedAt
 }
 
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model House {
   id             String   @id @default(cuid())
   title          String?

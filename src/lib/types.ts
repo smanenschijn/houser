@@ -60,6 +60,12 @@ export interface CriteriaDTO {
   description: string | null;
 }
 
+export interface SchoolDTO {
+  id: string;
+  name: string;
+  address: string;
+}
+
 export type RiskSeverity = "low" | "medium" | "high";
 
 export interface RiskFactor {

@@ -229,6 +229,11 @@ export interface ScoringResult {
   summary: string;
 }
 
+export interface SchoolLocation {
+  name: string;
+  address: string;
+}
+
 const routingExtractionSchema = z.object({
   requests: z.array(
     z.object({
@@ -239,13 +244,18 @@ const routingExtractionSchema = z.object({
         .string()
         .nullable()
         .describe(
-          "Full, searchable destination place name including the city, e.g. 'Utrecht Centraal Station'. Null when the criterion is not about distance/proximity.",
+          "Full, searchable destination place name including the city, e.g. 'Utrecht Centraal Station'. Null when the criterion is about primary schools or not about distance/proximity.",
         ),
       mode: z
         .enum(["walking", "cycling", "driving"])
         .nullable()
         .describe(
           "Travel mode that best matches the criterion. Null when not a proximity criterion.",
+        ),
+      useSchools: z
+        .boolean()
+        .describe(
+          "True when this criterion is about distance/proximity to a primary school (basisschool) and should be measured against the user-provided list of schools instead of a guessed destination.",
         ),
     }),
   ),
@@ -254,6 +264,7 @@ const routingExtractionSchema = z.object({
 async function computeRoutingContext(
   address: string,
   criteria: ScoringCriteria[],
+  schools: SchoolLocation[],
 ): Promise<string | null> {
   const criteriaText = criteria
     .map(
@@ -268,13 +279,14 @@ async function computeRoutingContext(
     system: `You identify which scoring criteria require a real travel-distance check.
 
 Respond with a JSON object using EXACTLY this shape, no other keys:
-{"requests": [{"criterionName": string, "destination": string|null, "mode": "walking"|"cycling"|"driving"|null}]}
+{"requests": [{"criterionName": string, "destination": string|null, "mode": "walking"|"cycling"|"driving"|null, "useSchools": boolean}]}
 
 Rules:
 - For every criterion you MUST return exactly one entry (in the same order), even if it is not about distance/proximity.
 - If a criterion involves distance, travel time or proximity to a place (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ...", "binnen 15 min fietsen van ..."), set "destination" to a full, searchable place name including the city (derive the city from the property address when possible) and choose the most appropriate "mode".
+- If the criterion is specifically about a primary school (basisschool, basisonderwijs, primair onderwijs, lagere school, school), set "useSchools" to true and set both "destination" and "mode" to null. Distances to schools are measured against the user's configured list of schools.
 - Choose "mode" by reading the criterion text: walking for "loopafstand", "lopen", "te voet", "wandelen"; cycling for "fiets", "fietsafstand"; otherwise driving.
-- If a criterion is not about distance/proximity, set both "destination" and "mode" to null.`,
+- If a criterion is not about distance/proximity, set "useSchools" to false and both "destination" and "mode" to null.`,
     prompt: `Property address:\n${address}\n\nCriteria:\n${criteriaText}`,
   });
 
@@ -284,6 +296,56 @@ Rules:
   const lines: string[] = [];
 
   for (const req of object.requests) {
+    if (req.useSchools) {
+      if (schools.length === 0) {
+        lines.push(
+          `- "${req.criterionName}": geen basisscholen ingesteld, afstand niet te verifiëren`,
+        );
+        continue;
+      }
+
+      const mode: "walking" | "cycling" | "driving" = "walking";
+      const measured: { school: SchoolLocation; km: number; mins: number }[] = [];
+      for (const school of schools) {
+        const destination =
+          (await geocodeAddress(school.address)) ??
+          (await geocodeAddress(`${school.name}, ${school.address}`));
+        if (!destination) continue;
+        const route = await routeBetween(origin, destination, mode);
+        if (!route) continue;
+        measured.push({
+          school,
+          km: route.distanceMeters / 1000,
+          mins: Math.round(route.durationSeconds / 60),
+        });
+      }
+
+      measured.sort((a, b) => a.km - b.km);
+      if (measured.length === 0) {
+        lines.push(
+          `- "${req.criterionName}": afstand tot basisscholen niet te verifiëren`,
+        );
+        continue;
+      }
+
+      const nearest = measured[0];
+      lines.push(
+        `- "${req.criterionName}" → dichtstbijzijnde basisschool "${nearest.school.name}" (${nearest.school.address}): ${nearest.km.toFixed(1)} km / ${nearest.mins} min per ${mode}`,
+      );
+      const others = measured.slice(1);
+      if (others.length > 0) {
+        lines.push(
+          `  andere basisscholen: ${others
+            .map(
+              (r) =>
+                `"${r.school.name}" ${r.km.toFixed(1)} km / ${r.mins} min`,
+            )
+            .join("; ")}`,
+        );
+      }
+      continue;
+    }
+
     if (!req.destination || !req.mode) continue;
     const destination = await geocodeAddress(req.destination);
     if (!destination) continue;
@@ -307,6 +369,7 @@ export async function scoreHouse(
   criteria: ScoringCriteria[],
   address: string | null = null,
   price: number | null = null,
+  schools: SchoolLocation[] = [],
 ): Promise<ScoringResult> {
   const names = criteria.map((c) => c.name).join(", ");
   const criteriaText = criteria
@@ -319,7 +382,7 @@ export async function scoreHouse(
   let routingContext: string | null = null;
   if (address) {
     try {
-      routingContext = await computeRoutingContext(address, criteria);
+      routingContext = await computeRoutingContext(address, criteria, schools);
     } catch (err) {
       console.error(`[scoreHouse] routing context ${address}:`, err);
     }
@@ -338,7 +401,7 @@ Rules:
 - "score" is a number from 0 to 10.
 - Write every "rationale" and the "summary" in Dutch.
 - Be strict and consistent across houses.
-- When a criterion involves a distance, travel time, or proximity (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ..."), base the score on the "Verified travel distances" section when it contains a value for that criterion. Use those real, mode-specific distances/times (never convert a car distance into walking or cycling minutes yourself). If no verified value is available for such a criterion, state that the distance could not be verified and score conservatively instead of guessing.`,
+- When a criterion involves a distance, travel time, or proximity (e.g. "binnen 5 km van X", "dichtbij een station", "op loopafstand van ..."), base the score on the "Verified travel distances" section when it contains a value for that criterion. Use those real, mode-specific distances/times (never convert a car distance into walking or cycling minutes yourself). For primary school (basisschool) criteria, use the measured distances to the configured schools and base the score on the nearest school. If no verified value is available for such a criterion, state that the distance could not be verified and score conservatively instead of guessing.`,
 
     prompt: `Score this property against the criteria below. Use EXACTLY these criterion names (one item per criterion, no extras): ${names}\n\nCriteria:\n${criteriaText}\n\nProperty address:\n${address ?? "n/a"}\n\nAsking price:\n${price != null ? `€${price}` : "n/a"}\n\nProperty description:\n${description ?? "n/a"}\n\n${routingContext ? `${routingContext}\n\n` : ""}Property brochure text:\n${rawText.slice(0, 20000)}\n\nRemember: for distance/proximity criteria use the verified distances above where available; never derive walking/cycling minutes from a car distance. Write all rationales and the summary in Dutch.`,
   });

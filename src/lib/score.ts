@@ -9,12 +9,15 @@ export async function scoreHouseAndStore(houseId: string) {
   const criteria = await prisma.criteria.findMany({ orderBy: { createdAt: "asc" } });
   if (criteria.length === 0) return null;
 
+  const schools = await prisma.school.findMany({ orderBy: { createdAt: "asc" } });
+
   const result = await scoreHouse(
     house.rawText ?? "",
     house.description,
     criteria,
     house.address,
     house.price,
+    schools.map((s) => ({ name: s.name, address: s.address })),
   );
 
   const score = await prisma.score.create({

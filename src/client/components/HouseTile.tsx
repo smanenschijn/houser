@@ -92,8 +92,8 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
     setStatus("scoring");
     try {
       const res = await fetch(`/api/houses/${house.id}/score`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Scoren mislukt");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Scoren mislukt");
       setStatus("ready");
       queryClient.invalidateQueries({ queryKey: ["houses"] });
       queryClient.invalidateQueries({ queryKey: ["house", house.id] });
@@ -113,8 +113,8 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
       const res = await fetch(`/api/houses/${house.id}/refresh`, {
         method: "POST",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Huis verversen mislukt");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? "Huis verversen mislukt");
       queryClient.invalidateQueries({ queryKey: ["houses"] });
       queryClient.invalidateQueries({ queryKey: ["house", house.id] });
     } catch (e) {
@@ -132,8 +132,8 @@ export default function HouseTile({ house }: { house: HouseDTO }) {
     try {
       const res = await fetch(`/api/houses/${house.id}`, { method: "DELETE" });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Archiveren mislukt");
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error ?? "Archiveren mislukt");
       }
       queryClient.invalidateQueries({ queryKey: ["houses"] });
     } catch (e) {
