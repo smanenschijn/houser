@@ -8,6 +8,7 @@ import { criteriaRoutes } from "@/server/routes/criteria";
 import { schoolsRoutes } from "@/server/routes/schools";
 import { searchProfilesRoutes } from "@/server/routes/search-profiles";
 import { uploadsRoutes } from "@/server/routes/uploads";
+import { injectPreviewTags } from "@/server/preview";
 
 export function createApp() {
   const app = new Hono();
@@ -32,14 +33,15 @@ export function createApp() {
   if (process.env.NODE_ENV === "production") {
     const distDir = path.resolve(import.meta.dir, "../../dist");
     app.use("*", serveStatic({ root: distDir }));
-    app.get("*", (c) => {
+    app.get("*", async (c) => {
       if (
         c.req.path.startsWith("/api/") ||
         c.req.path.startsWith("/uploads/")
       ) {
         return c.json({ error: "Not found" }, 404);
       }
-      return new Response(Bun.file(path.join(distDir, "index.html")));
+      const html = await Bun.file(path.join(distDir, "index.html")).text();
+      return c.html(await injectPreviewTags(c, html));
     });
   }
 
