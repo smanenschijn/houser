@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -5,10 +6,18 @@ import type { DocumentAnalysis, DocumentSectionType } from "@/lib/types";
 import { geocodeAddress } from "@/lib/geocode";
 import { routeBetween } from "@/lib/routing";
 
+const opencodeSessionId =
+  process.env.OPENCODE_GO_SESSION_ID ?? `session-${randomUUID()}`;
+
 const provider = createOpenAICompatible({
   name: "opencode-go",
   baseURL: process.env.OPENCODE_GO_BASE_URL ?? "https://opencode.ai/zen/go/v1",
   apiKey: process.env.OPENCODE_GO_API_KEY,
+  headers: {
+    "x-opencode-session": opencodeSessionId,
+    "x-opencode-client": "houser",
+    "User-Agent": "houser/1.0",
+  },
 });
 
 const modelId = process.env.OPENCODE_GO_MODEL ?? "deepseek-v4-flash";
